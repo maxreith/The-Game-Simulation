@@ -1,0 +1,106 @@
+import numpy as np
+
+from game_strategies import GameOverError
+
+
+def _shuffle_cards_custom(card_deck: np.ndarray = None, n_shuffles: int = 200) -> np.ndarray:
+    "Shuffles card deck"
+    if card_deck is None:
+        card_deck = np.arange(2, 100)
+    
+    shuffled_deck = card_deck.copy()  # Also copy to avoid mutating the input
+    for _ in range(n_shuffles):
+        random_numbers = np.random.randint(0, len(shuffled_deck), size=2)
+        start, end = np.sort(random_numbers)
+        shuffled_deck = np.concatenate((
+            shuffled_deck[start:end], shuffled_deck[:start], shuffled_deck[end:]
+        ))
+    return shuffled_deck
+
+
+def _shuffle_cards(card_deck: np.ndarray = None, n_shuffles: int = 200) -> np.ndarray:
+    "Shuffles card deck"
+    if card_deck is None:
+        card_deck = np.arange(2, 100)
+    
+    shuffled_deck = card_deck.copy()
+    np.random.shuffle(shuffled_deck)
+    return shuffled_deck
+
+
+def _initiate_game(n_players: int, card_deck: np.ndarray, hand_size: int = 6) -> tuple[list[np.ndarray], np.ndarray, dict]:
+    """Create and deal cards to new players."""
+    players = []
+    card_index = 0
+    
+    for _ in range(n_players):
+        player_cards = card_deck[card_index:card_index + hand_size]
+        players.append(player_cards)
+        card_index += hand_size
+
+    stacks = {
+        "decreasing_stack_1": np.array([99]),
+        "decreasing_stack_2": np.array([99]),
+        "increasing_stack_1": np.array([1]),
+        "increasing_stack_2": np.array([1])
+    }
+    
+    return players, card_deck[card_index:], stacks
+
+
+def _draw_cards(player: np.ndarray, remaining_deck: np.ndarray, hand_size: int = 6):
+    if len(remaining_deck) == 0:
+        return player, remaining_deck
+    
+    cards_to_draw = hand_size - len(player)
+    new_player = np.append(player, remaining_deck[:cards_to_draw])
+    return new_player, remaining_deck[cards_to_draw:]
+
+
+def run_game(strategy, n_players: int = 3, n_shuffles: int = 200) -> dict:
+    "Runs an instance of the game with a given strategy."
+    hand_size = 6 if n_players > 2 else 7
+    shuffled_deck = _shuffle_cards(n_shuffles=n_shuffles)   
+    players, remaining_deck, stacks = _initiate_game(n_players, shuffled_deck, hand_size)
+
+    total_cards = lambda: len(remaining_deck) + sum(len(p) for p in players)
+    turn = 0
+    
+    try:
+        while total_cards() > 0:
+            turn += 1
+            #print(f"Turn {turn}: total_cards={total_cards()}, deck={len(remaining_deck)}, hands={[len(p) for p in players]}")
+            if turn > 100:
+                raise RuntimeError("Too many turns!")
+            
+            for i, player in enumerate(players):
+                if len(player) == 0:
+                    continue
+                player, stacks = strategy(player, stacks, remaining_deck)
+                player, remaining_deck = _draw_cards(player, remaining_deck, hand_size)
+                players[i] = player
+        
+        return {"victory": True, "stacks": {k: v.copy() for k, v in stacks.items()}, "cards_remaining": 0}
+        
+    except GameOverError:
+        return {"victory": False, "stacks": {k: v.copy() for k, v in stacks.items()}, "cards_remaining": total_cards()}
+
+
+def run_simulation(strategy, n_games: int = 100, n_players: int = 3):
+    """Run multiple games and collect data."""
+    victories = []
+    losses = []
+
+    for _ in range(n_games):
+        result = run_game(strategy, n_players=n_players)
+        
+        if result["victory"]:
+            victories.append(result)
+        else:
+            losses.append(result)
+
+    return {
+        "victories": victories,
+        "losses": losses,
+        "win_rate": len(victories) / n_games
+    }

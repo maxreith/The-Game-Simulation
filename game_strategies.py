@@ -103,22 +103,15 @@ def _play_lowest_diff(player: np.ndarray, stacks: dict, cards_to_play: int = 2, 
 # =============================================================================
 
 def simple_game_strategy(player, stacks, remaining_deck):
-    """First, reset stacks if you can. Then, play cards with minimum distance until you do not have to play a card anymore.
-    """
-    n_cards_to_play = 2 if len(remaining_deck) > 0 else 1
-
-    new_player, new_stacks = _reset_pile(player, stacks)
-
-    cards_played_in_reset = len(player) - len(new_player)
-
-    n_cards_left_to_play = n_cards_to_play - cards_played_in_reset
+    """First, reset stacks if you can. Then, play cards with minimum distance until you do not have to play a card anymore."""
+    n_cards_to_play = 2 if remaining_deck.size > 0 else 1
     
-    new_player, new_stacks = _play_lowest_diff(new_player, new_stacks, n_cards_left_to_play)
-
-    n_cards_played = len(player) - len(new_player)
-
-    if n_cards_to_play > n_cards_played:
-        raise GameOverError(f"Player stuck with {len(player)} cards")
+    new_player, new_stacks = _reset_pile(player, stacks)
+    new_player, new_stacks = _play_lowest_diff(new_player, new_stacks, n_cards_to_play - (len(player) - len(new_player)))
+    
+    if len(player) - len(new_player) < n_cards_to_play:
+        raise GameOverError(f"Player stuck with {len(new_player)} cards")
+    
     return new_player, new_stacks
 
 def strategy(player, stacks, remaining_deck):
