@@ -38,12 +38,13 @@ def _initiate_game(n_players: int, card_deck: np.ndarray, hand_size: int = 6) ->
         players.append(player_cards)
         card_index += hand_size
 
-    stacks = {
-        "decreasing_stack_1": np.array([99]),
-        "decreasing_stack_2": np.array([99]),
-        "increasing_stack_1": np.array([1]),
-        "increasing_stack_2": np.array([1])
-    }
+    # Stack order: [decreasing_1, decreasing_2, increasing_1, increasing_2]
+    stacks = [
+        np.array([99]),  # decreasing_1 (index 0)
+        np.array([99]),  # decreasing_2 (index 1)
+        np.array([1]),   # increasing_1 (index 2)
+        np.array([1])    # increasing_2 (index 3)
+    ]
     
     return players, card_deck[card_index:], stacks
 
@@ -80,10 +81,10 @@ def run_game(strategy, n_players: int = 3, n_shuffles: int = 200) -> dict:
                 player, remaining_deck = _draw_cards(player, remaining_deck, hand_size)
                 players[i] = player
         
-        return {"victory": True, "stacks": {k: v.copy() for k, v in stacks.items()}, "cards_remaining": 0}
+        return {"victory": True, "stacks": [s.copy() for s in stacks], "cards_remaining": 0}
         
     except GameOverError:
-        return {"victory": False, "stacks": {k: v.copy() for k, v in stacks.items()}, "cards_remaining": total_cards()}
+        return {"victory": False, "stacks": [s.copy() for s in stacks], "cards_remaining": total_cards()}
 
 
 def run_simulation(strategy, n_games: int = 100, n_players: int = 3):
