@@ -1,19 +1,20 @@
 import itertools
 from pathlib import Path
 import pandas as pd
-from game_strategies import simple_game_strategy
+from game_strategies import bonus_play_strategy, simple_game_strategy
 from game_setup import run_simulation
 
 # Define your parameter grid
 param_grid = {
-    "strategy": [simple_game_strategy],  # Add more strategies as you create them
+    "strategy": [simple_game_strategy, bonus_play_strategy],  # Add more strategies as you create them
     "n_players": [2, 3, 4, 5, 6],
-    "n_games": [10000],
+    "n_games": [100],
 }
 
 # Strategy name lookup (for readable output)
 strategy_names = {
     simple_game_strategy: "simple",
+    bonus_play_strategy: "bonus_play",
 }
 
 # Generate all combinations

@@ -98,7 +98,7 @@ def _play_to_stack(player: np.ndarray, card: int, chosen_stack: int, all_stacks:
         can_play = card < top_card or card - 10 == top_card
 
     if not can_play:
-        raise ValueError(f"Card {card} cannot be played on stack {chosen_stack}.")
+        raise ValueError(f"Card {card} cannot be played on stack {chosen_stack}: {card} on top {top_card}. The player's hand: {player}. The other stacks tops: {[s.top for s in all_stacks]}")
 
     # Create copies to maintain pure function semantics
     new_stacks = [s.copy() for s in all_stacks]
@@ -143,7 +143,7 @@ def _reset_pile(player: np.ndarray, stacks: list[Stack]) -> tuple[np.ndarray, li
     
     return player, stacks
 
-def _play_lowest_diff(player: np.ndarray, stacks: list[Stack], cards_to_play: int = 2, hand_size: int = 6) -> tuple[np.ndarray, list[Stack]]:
+def _play_lowest_diff(player: np.ndarray, stacks: list[Stack], cards_to_play: int = 2) -> tuple[np.ndarray, list[Stack]]:
     """
     Play cards to stacks where the difference between player's card 
     and stack top is smallest.
@@ -161,7 +161,7 @@ def _play_lowest_diff(player: np.ndarray, stacks: list[Stack], cards_to_play: in
         diffs[:, 2:] = -diffs[:, 2:]  # Now: card - top for increasing
         
         # Mask invalid plays
-        diffs[diffs <= 0] = 1000
+        diffs[(diffs <= 0) & (diffs != -10)] = 1000
         
         if diffs.min() == 1000:
             break
@@ -190,17 +190,46 @@ def simple_game_strategy(player, stacks, remaining_deck):
     
     return new_player, new_stacks
 
-def strategy(player, stacks, remaining_deck):
+def bonus_play_strategy(player, stacks, remaining_deck, bonus_play_threshold = 4) -> tuple[np.ndarray, list[Stack]]:
     """
     """
     n_cards_to_play = 2 if len(remaining_deck) > 0 else 1
+    
+    original_hand_size = len(player)
+    
+    tops = np.array([s.top for s in stacks], dtype=np.int32)
+    player_col = player.reshape(-1, 1)
+    diffs = tops - player_col
+    
+    diffs[:, 2:] = -diffs[:, 2:]
 
-    new_player, new_stacks = _reset_pile(player, stacks)
-    new_player, new_stacks = _play_lowest_diff(new_player, new_stacks, n_cards_to_play - (len(player) - len(new_player)))
+    for i in range(len(player)):
+        # Create playable_diffs from diffs for card selection
+        playable_diffs = diffs.copy()
+        playable_diffs[(playable_diffs <= 0) & (playable_diffs != -10)] = 1000
+        
+        min_diff = playable_diffs.min()
+        
+        # Stop after n_cards_to_play if diff exceeds threshold
+        if i >= n_cards_to_play and min_diff > bonus_play_threshold or min_diff == 1000:
+            break
+
+        flat_idx = playable_diffs.argmin()
+        best_card_idx, best_stack = divmod(flat_idx, 4)
+        best_card = player[best_card_idx]
+
+        player, stacks = _play_to_stack(player, best_card, best_stack, stacks)
+
+        diffs = np.delete(diffs, best_card_idx, axis=0)
+
+        new_top = stacks[best_stack].top
+        diffs[:, best_stack] -= (new_top - tops[best_stack])
+        tops[best_stack] = new_top
+
+    n_cards_played = original_hand_size - len(player)
+    if n_cards_played < n_cards_to_play:
+        raise GameOverError(f"Player stuck with {len(player)} cards")
     
-    if len(player) - len(new_player) < n_cards_to_play:
-        raise GameOverError(f"Player stuck with {len(new_player)} cards")
-    
-    return new_player, new_stacks
+    return player, stacks
 
 

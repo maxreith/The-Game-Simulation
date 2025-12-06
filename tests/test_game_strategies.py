@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from game_strategies import (
-    _play_to_stack, _reset_pile, _play_lowest_diff, simple_game_strategy, GameOverError,
+    _play_to_stack, _reset_pile, _play_lowest_diff, bonus_play_strategy, simple_game_strategy, GameOverError,
     DECREASING_1, DECREASING_2, INCREASING_1, INCREASING_2, Stack
 )
 
@@ -177,3 +177,102 @@ def test_simple_game_strategy_game_over():
             remaining_deck=np.arange(2, 99)
         )
 
+
+def test_bonus_play_strategy_play_wo_bonus():
+    stacks = [
+        Stack(99),  # decreasing_1
+        Stack(99),  # decreasing_2
+        Stack(1),   # increasing_1
+        Stack(1)    # increasing_2
+    ]
+    actual_player, actual_stacks = bonus_play_strategy(
+        player=np.array([2, 3, 40, 45, 50, 55]),
+        stacks=stacks,
+        remaining_deck=np.arange(2, 99),
+        bonus_play_threshold=5
+    )
+    expected_player = np.array([40, 45, 50, 55])
+    expected_stacks = [
+        np.array([99]),      # decreasing_1
+        np.array([99]),      # decreasing_2
+        np.array([1, 2, 3]), # increasing_1
+        np.array([1])        # increasing_2
+    ]
+    assert np.array_equal(actual_player, expected_player)
+    assert all(np.array_equal(actual_stacks[i].to_array(), expected_stacks[i]) for i in range(4))
+
+def test_bonus_play_strategy_play_with_bonus():
+    stacks = [
+        Stack(99),  # decreasing_1
+        Stack(99),  # decreasing_2
+        Stack(1),   # increasing_1
+        Stack(1)    # increasing_2
+    ]
+    actual_player, actual_stacks = bonus_play_strategy(
+        player=np.array([2, 3, 7, 40, 50, 55]),
+        stacks=stacks,
+        remaining_deck=np.arange(2, 99),
+        bonus_play_threshold=5
+    )
+    expected_player = np.array([40, 50, 55])
+    expected_stacks = [
+        np.array([99]),          # decreasing_1
+        np.array([99]),          # decreasing_2
+        np.array([1, 2, 3, 7]), # increasing_1
+        np.array([1])            # increasing_2
+    ]
+    assert np.array_equal(actual_player, expected_player)
+    assert all(np.array_equal(actual_stacks[i].to_array(), expected_stacks[i]) for i in range(4))
+
+def test_bonus_play_strategy_play_play_entire_hand():
+    stacks = [
+        Stack(99),  # decreasing_1
+        Stack(99),  # decreasing_2
+        Stack.from_array(np.array([1, 45])),   # increasing_1
+        Stack(1)    # increasing_2
+    ]
+    actual_player, actual_stacks = bonus_play_strategy(
+        player=np.array([35, 37, 27, 17, 7, 8, 12, 20]),
+        stacks=stacks,
+        remaining_deck=np.arange(2, 99),
+        bonus_play_threshold=5
+    )
+    expected_player = np.array([20])
+    expected_stacks = [
+        np.array([99]),          # decreasing_1
+        np.array([99]),          # decreasing_2
+        np.array([1, 45, 35, 37, 27, 17, 7, 8, 12]), # increasing_1
+        np.array([1])            # increasing_2
+    ]
+    assert np.array_equal(actual_player, expected_player)
+    assert all(np.array_equal(actual_stacks[i].to_array(), expected_stacks[i]) for i in range(4))
+
+def test_bonus_play_strategy_game_over():
+    stacks = [
+        Stack.from_array(np.array([99, 2])),   # decreasing_1
+        Stack.from_array(np.array([99, 3])),   # decreasing_2
+        Stack.from_array(np.array([1, 97])),   # increasing_1
+        Stack.from_array(np.array([1, 98]))    # increasing_2
+    ]
+    with pytest.raises(GameOverError):
+        bonus_play_strategy(
+            player=np.array([4, 5, 6, 7]),
+            stacks=stacks,
+            remaining_deck=np.arange(2, 99),
+            bonus_play_threshold=5
+        )
+
+def test_bonus_play_strategy_game_over_2():
+    stacks = [
+        Stack.from_array(np.array([99, 91])),   # decreasing_1
+        Stack.from_array(np.array([99, 80])),   # decreasing_2
+        Stack.from_array(np.array([1, 72])),   # increasing_1
+        Stack.from_array(np.array([1, 48]))    # increasing_2
+    ]
+    with pytest.raises(GameOverError):
+        bonus_play_strategy(
+            player=np.array([32, 8, 36, 15, 63, 93]),
+            stacks=stacks,
+            remaining_deck=np.arange(2, 99),
+            bonus_play_threshold=5
+        )
