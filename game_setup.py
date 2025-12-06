@@ -58,7 +58,7 @@ def _draw_cards(player: np.ndarray, remaining_deck: np.ndarray, hand_size: int =
     return new_player, remaining_deck[cards_to_draw:]
 
 
-def run_game(strategy, n_players: int = 3, n_shuffles: int = 200) -> dict:
+def run_game(strategy, n_players: int = 3, n_shuffles: int = 200, bonus_play_threshold: int = 4) -> dict:
     "Runs an instance of the game with a given strategy."
     hand_size = 6 if n_players > 2 else 7
     shuffled_deck = _shuffle_cards(n_shuffles=n_shuffles)   
@@ -77,7 +77,7 @@ def run_game(strategy, n_players: int = 3, n_shuffles: int = 200) -> dict:
             for i, player in enumerate(players):
                 if len(player) == 0:
                     continue
-                player, stacks = strategy(player, stacks, remaining_deck)
+                player, stacks = strategy(player, stacks, remaining_deck, bonus_play_threshold)
                 player, remaining_deck = _draw_cards(player, remaining_deck, hand_size)
                 players[i] = player
         
@@ -87,13 +87,13 @@ def run_game(strategy, n_players: int = 3, n_shuffles: int = 200) -> dict:
         return {"victory": False, "stacks": [s.to_array() for s in stacks], "cards_remaining": total_cards()}
 
 
-def run_simulation(strategy, n_games: int = 100, n_players: int = 3):
+def run_simulation(strategy, n_games: int = 100, n_players: int = 3, bonus_play_threshold: int = 4) -> dict:
     """Run multiple games and collect data."""
     victories = []
     losses = []
 
     for _ in range(n_games):
-        result = run_game(strategy, n_players=n_players)
+        result = run_game(strategy, n_players=n_players, bonus_play_threshold=bonus_play_threshold)
         
         if result["victory"]:
             victories.append(result)

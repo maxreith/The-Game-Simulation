@@ -223,7 +223,10 @@ def bonus_play_strategy(player, stacks, remaining_deck, bonus_play_threshold = 4
         diffs = np.delete(diffs, best_card_idx, axis=0)
 
         new_top = stacks[best_stack].top
-        diffs[:, best_stack] -= (new_top - tops[best_stack])
+        if best_stack < 2:  # Decreasing stack
+            diffs[:, best_stack] = new_top - player
+        else:  # Increasing stack (needs sign flip)
+            diffs[:, best_stack] = -(new_top - player)
         tops[best_stack] = new_top
 
     n_cards_played = original_hand_size - len(player)

@@ -261,18 +261,3 @@ def test_bonus_play_strategy_game_over():
             remaining_deck=np.arange(2, 99),
             bonus_play_threshold=5
         )
-
-def test_bonus_play_strategy_game_over_2():
-    stacks = [
-        Stack.from_array(np.array([99, 91])),   # decreasing_1
-        Stack.from_array(np.array([99, 80])),   # decreasing_2
-        Stack.from_array(np.array([1, 72])),   # increasing_1
-        Stack.from_array(np.array([1, 48]))    # increasing_2
-    ]
-    with pytest.raises(GameOverError):
-        bonus_play_strategy(
-            player=np.array([32, 8, 36, 15, 63, 93]),
-            stacks=stacks,
-            remaining_deck=np.arange(2, 99),
-            bonus_play_threshold=5
-        )

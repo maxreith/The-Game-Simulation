@@ -6,9 +6,10 @@ from game_setup import run_simulation
 
 # Define your parameter grid
 param_grid = {
-    "strategy": [simple_game_strategy, bonus_play_strategy],  # Add more strategies as you create them
+    "strategy": [bonus_play_strategy],  # Add more strategies as you create them
     "n_players": [2, 3, 4, 5, 6],
-    "n_games": [100],
+    "bonus_play_threshold": [0, 1, 2, 3, 4, 5, 6, 8, 10],
+    "n_games": [10000],
 }
 
 # Strategy name lookup (for readable output)
@@ -29,19 +30,21 @@ for combo in combinations:
     results = run_simulation(
         params["strategy"], 
         n_games=params["n_games"], 
-        n_players=params["n_players"]
+        n_players=params["n_players"],
+        bonus_play_threshold=params["bonus_play_threshold"]
     )
     
     all_results.append({
         "strategy": strategy_names[params["strategy"]],
         "n_players": params["n_players"],
+        "bonus_play_threshold": params["bonus_play_threshold"],
         "n_games": params["n_games"],
         "win_rate": results["win_rate"],
         "victories": len(results["victories"]),
         "losses": len(results["losses"]),
     })
     
-    print(f"✓ {strategy_names[params['strategy']]}, {params['n_players']} players: {results['win_rate']*100:.1f}%")
+    print(f"✓ {strategy_names[params['strategy']]}, {params['n_players']} players, bonus_threshold={params['bonus_play_threshold']}: {results['win_rate']*100:.1f}%")
 
 # Save results
 output_dir = Path("output")
