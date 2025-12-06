@@ -2,7 +2,7 @@
 authors = ["maxreith <max.reith@gmx.de>"]
 channels = ["conda-forge"]
 name = "the_game_simulation"
-platforms = ["win-64"]
+platforms = ["win-64", "osx-arm64"]
 version = "0.1.0"
 
 [tasks]
@@ -15,3 +15,5 @@ pathlib = ">=1.0.1,<2"
 snakeviz = ">=2.2.2,<3"
 jupyterlab = ">=4.5.0,<5"
 line_profiler = ">=5.0.0,<6"
+pandas = ">=2.3.3,<3"
+pyarrow = ">=22.0.0,<23"
