@@ -17,3 +17,6 @@ jupyterlab = ">=4.5.0,<5"
 line_profiler = ">=5.0.0,<6"
 pandas = ">=2.3.3,<3"
 pyarrow = ">=22.0.0,<23"
+
+[pypi-dependencies]
+pdbp = "*"
