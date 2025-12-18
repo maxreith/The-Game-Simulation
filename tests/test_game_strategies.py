@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from game_strategies import (
-    _play_to_stack, _reset_pile, _play_lowest_diff, bonus_play_strategy, simple_game_strategy, GameOverError,
+    _play_to_stack, _reset_pile, _play_lowest_diff, bonus_play_strategy, simple_game_strategy, _call_api_to_get_play_order, gemini_strategy, GameOverError,
     DECREASING_1, DECREASING_2, INCREASING_1, INCREASING_2, Stack
 )
 
@@ -261,3 +261,21 @@ def test_bonus_play_strategy_game_over():
             remaining_deck=np.arange(2, 99),
             bonus_play_threshold=5
         )
+
+def test_call_api_to_get_play_order_structure():
+    stacks = [
+        Stack(99),  # decreasing_1
+        Stack(99),  # decreasing_2
+        Stack(1),   # increasing_1
+        Stack(1)    # increasing_2
+    ]
+    play_order = _call_api_to_get_play_order(
+        player=np.array([10, 20, 30]),
+        stacks=stacks,
+        n_cards_to_play=2
+    )
+    assert hasattr(play_order, 'list')
+    assert len(play_order.list) >= 2
+    for card_play in play_order.list:
+        assert hasattr(card_play, 'card')
+        assert hasattr(card_play, 'stack')

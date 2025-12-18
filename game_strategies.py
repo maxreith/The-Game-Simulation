@@ -1,4 +1,7 @@
 import numpy as np
+from google import genai
+from google.genai import types
+from pydantic import BaseModel
 
 class GameOverError(Exception):
     """Raised when a player cannot make a valid move."""
@@ -236,3 +239,85 @@ def bonus_play_strategy(player, stacks, remaining_deck, bonus_play_threshold = 4
     return player, stacks
 
 
+def gemini_strategy(player, stacks, remaining_deck):
+    """Implementing a strategy that uses Gemini API to determine play order."""
+    n_cards_to_play = 2 if len(remaining_deck) > 0 else 1
+    play_order = _call_api_to_get_play_order(player, stacks, n_cards_to_play)
+
+    for play in play_order.list:
+        player, stacks = _play_to_stack(player, play.card, play.stack, stacks)
+                                       
+    return player, stacks
+
+def _call_api_to_get_play_order(player: np.ndarray, stacks: list[Stack], n_cards_to_play: int):
+    "Get play order from Gemini API."
+
+    prompt = f"""
+    You are playing the card game 'The Game'. The rules are as follows:\n{rules}\n\n. Your hand is {player}. 
+    The current stacks are {stacks}.\n\n You must play at least {n_cards_to_play} cards. Which cards should you play and on which stacks?            
+    """
+
+    class Card_Play(BaseModel):
+        card: int
+        stack: int
+
+    class Play_Order(BaseModel):
+        list : list[Card_Play]
+
+    client = genai.Client()
+
+    response = client.models.generate_content(
+        model="gemini-3-flash-preview",
+        contents=f"""
+            You are playing the card game 'The Game'. The rules are as follows:\n{rules}\n\n. Your hand is {player}. 
+            The current stacks are {stacks}.\n\nBased on this information, which two cards should you play and on which stacks?            
+            """,
+        config = types.GenerateContentConfig(
+            thinking_config=types.ThinkingConfig(thinking_level="minimal"),
+            response_mime_type="application/json",
+            response_json_schema=Play_Order.model_json_schema(),
+            )
+    )
+    play_order = Play_Order.model_validate_json(response.text)
+    return play_order
+
+rules = """
+In **"The Game"**, you and your fellow players are not playing against each other; you are playing against the game itself. The goal is to discard all 98 cards in the deck into four specific piles.
+
+Here are the rules:
+
+### 1. The Setup
+*   **The Deck:** There are 98 cards numbered **2 through 99**.
+*   **The Piles:** There are four piles:
+    *   **Two "Ascending" Piles:** These start at **1** and must go **up** (1 $\rightarrow$ 99).
+    *   **Two "Descending" Piles:** These start at **100** and must go **down** (100 $\rightarrow$ 2).
+    *   **The Decreasing Piles are denoted with integers 0 and 1, and the Ascending Piles with integers 2 and 3.
+*   **The Hand:** Depending on the number of players, each person is dealt a hand (e.g., 6 cards for 3–5 players, 7 cards for 2 players, or 8 cards for solo play).
+
+### 2. Gameplay
+On your turn, you must follow these two steps:
+
+**Step A: Play Cards (Mandatory)**
+You **must** play at least **2 cards** from your hand onto any of the four piles. (If the draw deck is empty, you only need to play 1 card). 
+*   On an **Ascending pile (1 $\rightarrow$)**, the card you play must be *higher* than the card currently on top.
+*   On a **Descending pile (100 $\rightarrow$)**, the card you play must be *lower* than the card currently on top.
+*   You can play as many cards as you want per turn, as long as you play at least two.
+
+**Step B: Draw Cards**
+Once you finish playing, draw back up to your original hand size.
+
+### 3. The "Backwards" Rule (The Secret to Winning)
+Normally, you must follow the direction of the pile. However, there is one exception that allows you to "reset" a pile:
+*   You may play a card in the **wrong direction** if it is **exactly 10 higher or lower** than the top card.
+*   *Example:* If the Ascending pile is at **45**, you can play the **35** on top of it to "push" the pile back down, giving your team more room to play.
+*   *Example:* If the Descending pile is at **72**, you can play the **82** on top of it.
+
+### 4. Communication
+This is a cooperative game, but there is a catch: **You cannot tell other players the specific numbers in your hand.**
+*   **Allowed:** "Don't play on this pile," or "I have a really good card for the descending pile."
+*   **Not Allowed:** "I have the 44," or "I can play a card that is 2 higher than that 50."
+
+### 5. Winning and Losing
+*   **Losing:** If it is a player's turn and they cannot play the minimum required cards (2 cards if the deck exists, 1 if it doesn't), the game ends immediately. Everyone loses!
+*   **Winning:** If the team manages to play all 98 cards onto the piles, you have beaten The Game. 
+"""

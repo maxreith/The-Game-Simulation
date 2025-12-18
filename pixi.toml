@@ -17,6 +17,9 @@ jupyterlab = ">=4.5.0,<5"
 line_profiler = ">=5.0.0,<6"
 pandas = ">=2.3.3,<3"
 pyarrow = ">=22.0.0,<23"
+google-genai = ">=1.56.0,<2"
+pydantic = ">=2.12.5,<3"
+typing = ">=3.10.0.0,<4"
 
 [pypi-dependencies]
 pdbp = "*"
