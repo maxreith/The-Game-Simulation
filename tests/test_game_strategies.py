@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from game_strategies import (
-    _play_to_stack, _reset_pile, _play_lowest_diff, bonus_play_strategy, _call_api_to_get_play_order, gemini_strategy, GameOverError,
+    _play_to_stack, bonus_play_strategy, _call_api_to_get_play_order, gemini_strategy, GameOverError,
     DECREASING_1, DECREASING_2, INCREASING_1, INCREASING_2, Stack, create_stacks
 )
 
@@ -69,69 +69,9 @@ def test_play_to_stack_invalid_move(midgame_stacks):
             all_stacks=stacks
         )
 
-def test_reset_pile_with_one_reset_card(midgame_stacks):
-    stacks = midgame_stacks
-    player=np.array([30, 31, 32, 33, 34, 35, 35])
-    actual_player, actual_stacks = _reset_pile(player, stacks)
-    expected_player = np.array([31, 32, 33, 34, 35, 35])
-    expected_stacks = [
-        np.array([99, 70, 50]),  # decreasing_1
-        np.array([99, 60]),              # decreasing_2
-        np.array([1, 25, 40, 30]),          # increasing_1
-        np.array([1, 20])           # increasing_2
-    ]
-    assert np.array_equal(actual_player, expected_player)
-    assert all(np.array_equal(actual_stacks[i].to_array(), expected_stacks[i]) for i in range(4))
 
-def test_reset_pile_with_many_reset_cards(midgame_stacks):
-    stacks = midgame_stacks
-    actual_player, actual_stacks = _reset_pile(
-        player=np.array([10, 30, 35]),
-        stacks=stacks
-    )
-    expected_player = np.array([35])  # player plays all cards
-    expected_stacks = [
-        np.array([99, 70, 50]),  # decreasing_1
-        np.array([99, 60]),              # decreasing_2
-        np.array([1, 25, 40, 30]),          # increasing_1
-        np.array([1, 20, 10])           # increasing_2
-    ]
-    assert np.array_equal(actual_player, expected_player)
-    assert all(np.array_equal(actual_stacks[i].to_array(), expected_stacks[i]) for i in range(4))
 
-def test_play_lowest_diff_with_normal_hand(empty_stacks):
-    stacks = empty_stacks
-    actual_player, actual_stacks = _play_lowest_diff(
-        player=np.array([2, 3, 40, 45, 50, 55]),
-        stacks=stacks,
-        cards_to_play=2
-    )
-    expected_player = np.array([40, 45, 50, 55])
-    expected_stacks = [
-        np.array([99]),      # decreasing_1
-        np.array([99]),      # decreasing_2
-        np.array([1, 2, 3]), # increasing_1
-        np.array([1])        # increasing_2
-    ]
-    assert np.array_equal(actual_player, expected_player)
-    assert all(np.array_equal(actual_stacks[i].to_array(), expected_stacks[i]) for i in range(4))
 
-def test_play_lowest_diff_with_endgame_hand(empty_stacks):
-    stacks = empty_stacks
-    actual_player, actual_stacks = _play_lowest_diff(
-        player=np.array([2, 3, 40, 45]),
-        stacks=stacks,
-        cards_to_play=1
-    )
-    expected_player = np.array([3, 40, 45])
-    expected_stacks = [
-        np.array([99]),    # decreasing_1
-        np.array([99]),    # decreasing_2
-        np.array([1, 2]),  # increasing_1
-        np.array([1])      # increasing_2
-    ]
-    assert np.array_equal(actual_player, expected_player)
-    assert all(np.array_equal(actual_stacks[i].to_array(), expected_stacks[i]) for i in range(4))
 
 def test_bonus_play_strategy_play_wo_bonus(empty_stacks):
     stacks = empty_stacks
