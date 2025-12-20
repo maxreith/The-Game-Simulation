@@ -2,6 +2,10 @@ import numpy as np
 from google import genai
 from google.genai import types
 from pydantic import BaseModel
+from pathlib import Path
+from dotenv import load_dotenv
+
+load_dotenv(Path(".").resolve() / ".env")
 
 class GameOverError(Exception):
     """Raised when a player cannot make a valid move."""
@@ -101,7 +105,7 @@ def _play_to_stack(player: np.ndarray, card: int, chosen_stack: int, all_stacks:
         can_play = card < top_card or card - 10 == top_card
 
     if not can_play:
-        raise ValueError(f"Card {card} cannot be played on stack {chosen_stack}: {card} on top {top_card}. The player's hand: {player}. The other stacks tops: {[s.top for s in all_stacks]}")
+        raise ValueError(f"Card {card} cannot be played on stack {chosen_stack}: Tried to play {card} on top of {top_card}. The player's hand: {player}. The other stacks tops: {[s.top for s in all_stacks]}")
 
     # Create copies to maintain pure function semantics
     new_stacks = [s.copy() for s in all_stacks]
@@ -227,24 +231,36 @@ def bonus_play_strategy(player, stacks, remaining_deck, bonus_play_threshold = 4
     return player, stacks
 
 
-def gemini_strategy(player, stacks, remaining_deck):
+def gemini_strategy(player, stacks, remaining_deck, bonus_play_threshold):
     """Implementing a strategy that uses Gemini API to determine play order."""
     n_cards_to_play = 2 if len(remaining_deck) > 0 else 1
     play_order = _call_api_to_get_play_order(player, stacks, n_cards_to_play)
 
     for play in play_order.list:
-        player, stacks = _play_to_stack(player, play.card, play.stack, stacks)
+        try:
+            player, stacks = _play_to_stack(player, play.card, play.stack, stacks)
+        except ValueError as e:
+            raise GameOverError(
+                f"Gemini requested an invalid play: card={getattr(play, 'card', None)} "
+                f"stack={getattr(play, 'stack', None)}"
+            ) from e
+
+    if len(play_order.list) < n_cards_to_play:
+        raise GameOverError(f"Player stuck with {len(player)} cards")
                                        
     return player, stacks
 
 def _call_api_to_get_play_order(player: np.ndarray, stacks: list[Stack], n_cards_to_play: int):
     "Get play order from Gemini API."
+    #import pdbp; breakpoint()
+
+    stack_descriptions = "\n".join([f"Stack {i}: top = {stack.top}" for i, stack in enumerate(stacks)])
 
     prompt = f"""
-    You are playing the card game 'The Game'. The rules are as follows:\n{rules}\n\n. Your hand is {player}. 
-    The current stacks are {stacks}.\n\n You must play at least {n_cards_to_play} cards. Which cards should you play and on which stacks?            
+    You are playing the card game 'The Game'. Your hand is {player}. 
+    The current stacks and their top cards are {stack_descriptions}.\n\n You must play at least {n_cards_to_play} cards from your hand. Which cards should you play and on which stacks?\n
+    Note that decreasing piles are identified with integers 0 and 1, and increasing piles with integers 2 and 3. Thus, to play a card on the first decreasing pile, you would specify stack 0. To play on the second increasing pile, you would specify stack 3.
     """
-
     class Card_Play(BaseModel):
         card: int
         stack: int
@@ -256,10 +272,7 @@ def _call_api_to_get_play_order(player: np.ndarray, stacks: list[Stack], n_cards
 
     response = client.models.generate_content(
         model="gemini-3-flash-preview",
-        contents=f"""
-            You are playing the card game 'The Game'. The rules are as follows:\n{rules}\n\n. Your hand is {player}. 
-            The current stacks are {stacks}.\n\nBased on this information, which two cards should you play and on which stacks?            
-            """,
+        contents=prompt,
         config = types.GenerateContentConfig(
             thinking_config=types.ThinkingConfig(thinking_level="minimal"),
             response_mime_type="application/json",
@@ -268,6 +281,7 @@ def _call_api_to_get_play_order(player: np.ndarray, stacks: list[Stack], n_cards
     )
     play_order = Play_Order.model_validate_json(response.text)
     return play_order
+
 
 rules = """
 In **"The Game"**, you and your fellow players are not playing against each other; you are playing against the game itself. The goal is to discard all 98 cards in the deck into four specific piles.
@@ -279,7 +293,6 @@ Here are the rules:
 *   **The Piles:** There are four piles:
     *   **Two "Ascending" Piles:** These start at **1** and must go **up** (1 $\rightarrow$ 99).
     *   **Two "Descending" Piles:** These start at **100** and must go **down** (100 $\rightarrow$ 2).
-    *   **The Decreasing Piles are denoted with integers 0 and 1, and the Ascending Piles with integers 2 and 3.
 *   **The Hand:** Depending on the number of players, each person is dealt a hand (e.g., 6 cards for 3–5 players, 7 cards for 2 players, or 8 cards for solo play).
 
 ### 2. Gameplay
@@ -300,12 +313,7 @@ Normally, you must follow the direction of the pile. However, there is one excep
 *   *Example:* If the Ascending pile is at **45**, you can play the **35** on top of it to "push" the pile back down, giving your team more room to play.
 *   *Example:* If the Descending pile is at **72**, you can play the **82** on top of it.
 
-### 4. Communication
-This is a cooperative game, but there is a catch: **You cannot tell other players the specific numbers in your hand.**
-*   **Allowed:** "Don't play on this pile," or "I have a really good card for the descending pile."
-*   **Not Allowed:** "I have the 44," or "I can play a card that is 2 higher than that 50."
-
-### 5. Winning and Losing
+### 4. Winning and Losing
 *   **Losing:** If it is a player's turn and they cannot play the minimum required cards (2 cards if the deck exists, 1 if it doesn't), the game ends immediately. Everyone loses!
 *   **Winning:** If the team manages to play all 98 cards onto the piles, you have beaten The Game. 
 """

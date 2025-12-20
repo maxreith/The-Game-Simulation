@@ -70,7 +70,6 @@ def run_game(strategy, n_players: int = 3, n_shuffles: int = 200, bonus_play_thr
     try:
         while total_cards() > 0:
             turn += 1
-            #print(f"Turn {turn}: total_cards={total_cards()}, deck={len(remaining_deck)}, hands={[len(p) for p in players]}")
             if turn > 100:
                 raise RuntimeError("Too many turns!")
             
@@ -91,9 +90,9 @@ def run_simulation(strategy, n_games: int = 100, n_players: int = 3, bonus_play_
     """Run multiple games and collect data."""
     victories = []
     losses = []
-
+    import pdbp; breakpoint()
     for _ in range(n_games):
-        result = run_game(strategy, n_players=n_players, bonus_play_threshold=bonus_play_threshold)
+        result = run_game(strategy, n_players=n_players, bonus_play_threshold=bonus_play_threshold) #TODO: some strategies don't take bonus_play_threshold as an argument
         
         if result["victory"]:
             victories.append(result)

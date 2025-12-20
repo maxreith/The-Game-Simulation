@@ -227,8 +227,10 @@ def test_gemini_strategy_plays_reasonable(midgame_stacks):
         np.array([1, 20, 21, 22]) # increasing_2
     ]
     assert np.array_equal(actual_player, expected_player)
-    assert all(np.array_equal(actual_stacks[i].to_array(), expected_stacks[i])
-                for i in range(4))
+    assert np.array_equal(actual_stacks[0].to_array(), expected_stacks[0])
+    assert np.array_equal(actual_stacks[1].to_array(), expected_stacks[1])
+    assert np.array_equal(actual_stacks[2].to_array(), expected_stacks[2])
+    assert np.array_equal(actual_stacks[3].to_array(), expected_stacks[3])
 
 def test_gemini_strategy_game_over(game_over_stacks):
     stacks = game_over_stacks
