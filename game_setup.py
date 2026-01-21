@@ -1,6 +1,7 @@
 import numpy as np
 
-from game_strategies import GameOverError, Stack, bonus_play_strategy
+from utils import GameOverError, Stack
+from strategies import bonus_play_strategy
 
 
 def _shuffle_cards_custom(card_deck: np.ndarray = None, n_shuffles: int = 200) -> np.ndarray:

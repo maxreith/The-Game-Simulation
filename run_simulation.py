@@ -1,7 +1,7 @@
 import itertools
 from pathlib import Path
 import pandas as pd
-from game_strategies import bonus_play_strategy
+from strategies import bonus_play_strategy
 from game_setup import run_simulation
 
 # Define your parameter grid

@@ -1,9 +1,8 @@
 import numpy as np
 import pytest
 
-from game_strategies import (
-    _play_to_stack, bonus_play_strategy, _call_api_to_get_play_order, gemini_strategy, GameOverError, Stack, create_stacks
-)
+from utils import _play_to_stack, GameOverError, Stack, create_stacks
+from strategies import bonus_play_strategy, _call_api_to_get_play_order, gemini_strategy
 
 @pytest.fixture
 def empty_stacks():

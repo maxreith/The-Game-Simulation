@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from game_setup import _shuffle_cards, _initiate_game, _draw_cards, run_game
-from game_strategies import Stack
+from utils import Stack
 
 
 def test_shuffle_cards_some_shuffling():
