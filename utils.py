@@ -1,4 +1,11 @@
 import numpy as np
+from google import genai
+from google.genai import types
+from pydantic import BaseModel
+from pathlib import Path
+from dotenv import load_dotenv
+
+load_dotenv(Path(".").resolve() / ".env")
 
 
 class GameOverError(Exception):
@@ -109,6 +116,40 @@ def _play_to_stack(player: np.ndarray, card: int, chosen_stack: int, all_stacks:
     new_player = player[player != card]
 
     return new_player, new_stacks
+
+
+def _call_api_to_get_play_order(player: np.ndarray, stacks: list[Stack], n_cards_to_play: int):
+    """Get play order from Gemini API."""
+    #import pdbp; breakpoint()
+
+    stack_descriptions = "\n".join([f"Stack {i}: top = {stack.top}" for i, stack in enumerate(stacks)])
+
+    prompt = f"""
+    You are playing the card game 'The Game'. Your hand is {player}.
+    The current stacks and their top cards are {stack_descriptions}.\n\n
+    Note that decreasing piles are identified with integers 0 and 1, and increasing piles with integers 2 and 3. Thus, to play a card on the first decreasing pile, you would specify stack 0. To play on the second increasing pile, you would specify stack 3.
+    You must play at least {n_cards_to_play} cards from your hand. You must avoid invalid play, if you can. Play stack resets if possible. Which cards should you play and on which stacks?\n
+    """
+    class Card_Play(BaseModel):
+        card: int
+        stack: int
+
+    class Play_Order(BaseModel):
+        list : list[Card_Play]
+
+    client = genai.Client()
+
+    response = client.models.generate_content(
+        model="gemini-3-flash-preview",
+        contents=prompt,
+        config = types.GenerateContentConfig(
+            thinking_config=types.ThinkingConfig(thinking_level="minimal"),
+            response_mime_type="application/json",
+            response_json_schema=Play_Order.model_json_schema(),
+            )
+    )
+    play_order = Play_Order.model_validate_json(response.text)
+    return play_order
 
 
 rules = """
