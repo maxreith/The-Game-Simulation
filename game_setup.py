@@ -1,7 +1,6 @@
 import numpy as np
 
 from utils import GameOverError, Stack
-from strategies import bonus_play_strategy
 
 
 def _shuffle_cards_custom(card_deck=None, n_shuffles=200):
@@ -59,8 +58,19 @@ def _draw_cards(player, remaining_deck, hand_size=6):
     return new_player, remaining_deck[cards_to_draw:]
 
 
-def run_game(strategy, n_players=3, n_shuffles=200, bonus_play_threshold=4, use_custom_shuffle=False):
-    "Runs an instance of the game with a given strategy."
+def run_game(strategy, n_players=3, n_shuffles=200, use_custom_shuffle=False):
+    """Runs an instance of the game with a given strategy.
+
+    Args:
+        strategy: A callable with signature (player, stacks, remaining_deck) -> (player, stacks).
+            Strategy-specific parameters should be pre-configured via functools.partial.
+        n_players: Number of players in the game.
+        n_shuffles: Number of shuffles for the deck.
+        use_custom_shuffle: Whether to use the custom shuffle algorithm.
+
+    Returns:
+        A dict with victory status, final stacks, and cards remaining.
+    """
     hand_size = 6 if n_players > 2 else 7
     shuffled_deck = _shuffle_cards_custom(n_shuffles=n_shuffles) if use_custom_shuffle else _shuffle_cards(n_shuffles=n_shuffles)
     players, remaining_deck, stacks = _initiate_game(n_players, shuffled_deck, hand_size)
@@ -76,9 +86,7 @@ def run_game(strategy, n_players=3, n_shuffles=200, bonus_play_threshold=4, use_
             for i, player in enumerate(players):
                 if len(player) == 0:
                     continue
-                player, stacks = strategy(
-                    player, stacks, remaining_deck, bonus_play_threshold
-                )
+                player, stacks = strategy(player, stacks, remaining_deck)
                 player, remaining_deck = _draw_cards(player, remaining_deck, hand_size)
                 players[i] = player
 
@@ -97,27 +105,29 @@ def run_game(strategy, n_players=3, n_shuffles=200, bonus_play_threshold=4, use_
         }
 
 
-def run_simulation(strategy, n_games=100, n_players=3, bonus_play_threshold=4, n_shuffles=200, use_custom_shuffle=False):
-    """Run multiple games and collect data."""
+def run_simulation(strategy, n_games=100, n_players=3, n_shuffles=200, use_custom_shuffle=False):
+    """Run multiple games and collect data.
+
+    Args:
+        strategy: A callable with signature (player, stacks, remaining_deck) -> (player, stacks).
+            Strategy-specific parameters should be pre-configured via functools.partial.
+        n_games: Number of games to simulate.
+        n_players: Number of players in each game.
+        n_shuffles: Number of shuffles for the deck.
+        use_custom_shuffle: Whether to use the custom shuffle algorithm.
+
+    Returns:
+        A dict with victories list, losses list, and win_rate.
+    """
     victories = []
     losses = []
     for _ in range(n_games):
-        if strategy == bonus_play_strategy:
-            result = run_game(
-                strategy,
-                n_players=n_players,
-                bonus_play_threshold=bonus_play_threshold,
-                n_shuffles=n_shuffles,
-                use_custom_shuffle=use_custom_shuffle,
-            )
-        else:
-            result = run_game(
-                strategy,
-                n_players=n_players,
-                n_shuffles=n_shuffles,
-                use_custom_shuffle=use_custom_shuffle,
-            )
-
+        result = run_game(
+            strategy,
+            n_players=n_players,
+            n_shuffles=n_shuffles,
+            use_custom_shuffle=use_custom_shuffle,
+        )
 
         if result["victory"]:
             victories.append(result)
