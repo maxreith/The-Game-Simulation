@@ -1,11 +1,12 @@
 import numpy as np
 
-from utils import GameOverError, Stack, _play_to_stack, _call_api_to_get_play_order
+from utils import GameOverError, _play_to_stack, _call_api_to_get_play_order
 
 
-def bonus_play_strategy(player: np.ndarray, stacks: list[Stack], remaining_deck: np.ndarray = np.arange(2, 99), bonus_play_threshold = 4) -> tuple[np.ndarray, list[Stack]]:
-    """
-    """
+def bonus_play_strategy(
+    player, stacks, remaining_deck=np.arange(2, 99), bonus_play_threshold=4
+):
+    """ """
     n_cards_to_play = 2 if len(remaining_deck) > 0 else 1
 
     original_hand_size = len(player)
@@ -49,7 +50,7 @@ def bonus_play_strategy(player: np.ndarray, stacks: list[Stack], remaining_deck:
     return player, stacks
 
 
-def gemini_strategy(player: np.ndarray, stacks: list[Stack], remaining_deck: np.ndarray = np.arange(2, 99)) -> tuple[np.ndarray, list[Stack]]:
+def gemini_strategy(player, stacks, remaining_deck=np.arange(2, 99)):
     """Implementing a strategy that uses Gemini API to determine play order."""
     n_cards_to_play = 2 if len(remaining_deck) > 0 else 1
     play_order = _call_api_to_get_play_order(player, stacks, n_cards_to_play)
@@ -59,7 +60,7 @@ def gemini_strategy(player: np.ndarray, stacks: list[Stack], remaining_deck: np.
             player, stacks = _play_to_stack(player, play.card, play.stack, stacks)
         except ValueError as e:
             raise GameOverError(
-                f"""Gemini requested an invalid play. Tried to play card {getattr(play, 'card', None)} on stack {getattr(play, 'stack', None)}
+                f"""Gemini requested an invalid play. Tried to play card {getattr(play, "card", None)} on stack {getattr(play, "stack", None)}
                 with player hand {player} and stack tops {[s.top for s in stacks]}."""
             ) from e
 

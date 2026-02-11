@@ -10,6 +10,7 @@ load_dotenv(Path(".").resolve() / ".env")
 
 class GameOverError(Exception):
     """Raised when a player cannot make a valid move."""
+
     pass
 
 
@@ -28,33 +29,33 @@ INCREASING_2 = 3
 class Stack:
     """Pre-allocated stack with O(1) append and top access."""
 
-    MAX_SIZE: int = 100  # Max cards per stack (98 game cards + initial)
+    MAX_SIZE = 100  # Max cards per stack (98 game cards + initial)
 
-    def __init__(self, initial_value: int):
+    def __init__(self, initial_value):
         """Initialize with starting card (1 or 99)."""
         self._data = np.empty(self.MAX_SIZE, dtype=np.int32)
         self._data[0] = initial_value
         self._length = 1
 
     @property
-    def top(self) -> int:
+    def top(self):
         """Get the top card. O(1)."""
         return self._data[self._length - 1]
 
-    def push(self, card: int) -> None:
+    def push(self, card):
         """Add card to top. O(1). Mutates in-place."""
         self._data[self._length] = card
         self._length += 1
 
-    def __len__(self) -> int:
+    def __len__(self):
         """Current number of cards."""
         return self._length
 
-    def to_array(self) -> np.ndarray:
+    def to_array(self):
         """Return copy of actual contents (for results/debugging)."""
-        return self._data[:self._length].copy()
+        return self._data[: self._length].copy()
 
-    def copy(self) -> 'Stack':
+    def copy(self):
         """Create independent copy of this stack."""
         new_stack = Stack.__new__(Stack)
         new_stack._data = self._data.copy()
@@ -62,30 +63,29 @@ class Stack:
         return new_stack
 
     @classmethod
-    def from_array(cls, arr: np.ndarray) -> 'Stack':
+    def from_array(cls, arr):
         """Create a Stack from an existing array (for testing)."""
         stack = cls.__new__(cls)
         stack._data = np.empty(cls.MAX_SIZE, dtype=np.int32)
-        stack._data[:len(arr)] = arr
+        stack._data[: len(arr)] = arr
         stack._length = len(arr)
         return stack
 
 
-def create_stacks(dec1_top: int = 99, dec2_top: int = 99,
-                  inc1_top: int = 1, inc2_top: int = 1) -> list['Stack']:
+def create_stacks(dec1_top=99, dec2_top=99, inc1_top=1, inc2_top=1):
     """Create the 4 game stacks with given initial values."""
     return [
-        Stack(dec1_top),   # DECREASING_1 (index 0)
-        Stack(dec2_top),   # DECREASING_2 (index 1)
-        Stack(inc1_top),   # INCREASING_1 (index 2)
-        Stack(inc2_top),   # INCREASING_2 (index 3)
+        Stack(dec1_top),  # DECREASING_1 (index 0)
+        Stack(dec2_top),  # DECREASING_2 (index 1)
+        Stack(inc1_top),  # INCREASING_1 (index 2)
+        Stack(inc2_top),  # INCREASING_2 (index 3)
     ]
 
 
 # =============================================================================
 # Helper Functions
 # =============================================================================
-def _play_to_stack(player: np.ndarray, card: int, chosen_stack: int, all_stacks: list[Stack]) -> tuple[np.ndarray, list[Stack]]:
+def _play_to_stack(player, card, chosen_stack, all_stacks):
     """Play a card to a stack by index if valid. Pure function (copies stacks).
 
     Stack indices: 0=decreasing_1, 1=decreasing_2, 2=increasing_1, 3=increasing_2
@@ -108,7 +108,9 @@ def _play_to_stack(player: np.ndarray, card: int, chosen_stack: int, all_stacks:
         can_play = card < top_card or card - 10 == top_card
 
     if not can_play:
-        raise ValueError(f"Card {card} cannot be played on stack {chosen_stack}: Tried to play {card} on top of {top_card}. The player's hand: {player}. The other stacks tops: {[s.top for s in all_stacks]}")
+        raise ValueError(
+            f"Card {card} cannot be played on stack {chosen_stack}: Tried to play {card} on top of {top_card}. The player's hand: {player}. The other stacks tops: {[s.top for s in all_stacks]}"
+        )
 
     # Create copies to maintain pure function semantics
     new_stacks = [s.copy() for s in all_stacks]
@@ -118,11 +120,13 @@ def _play_to_stack(player: np.ndarray, card: int, chosen_stack: int, all_stacks:
     return new_player, new_stacks
 
 
-def _call_api_to_get_play_order(player: np.ndarray, stacks: list[Stack], n_cards_to_play: int):
+def _call_api_to_get_play_order(player, stacks, n_cards_to_play):
     """Get play order from Gemini API."""
-    #import pdbp; breakpoint()
+    # import pdbp; breakpoint()
 
-    stack_descriptions = "\n".join([f"Stack {i}: top = {stack.top}" for i, stack in enumerate(stacks)])
+    stack_descriptions = "\n".join(
+        [f"Stack {i}: top = {stack.top}" for i, stack in enumerate(stacks)]
+    )
 
     prompt = f"""
     You are playing the card game 'The Game'. Your hand is {player}.
@@ -130,23 +134,24 @@ def _call_api_to_get_play_order(player: np.ndarray, stacks: list[Stack], n_cards
     Note that decreasing piles are identified with integers 0 and 1, and increasing piles with integers 2 and 3. Thus, to play a card on the first decreasing pile, you would specify stack 0. To play on the second increasing pile, you would specify stack 3.
     You must play at least {n_cards_to_play} cards from your hand. You must avoid invalid play, if you can. Play stack resets if possible. Which cards should you play and on which stacks?\n
     """
+
     class Card_Play(BaseModel):
         card: int
         stack: int
 
     class Play_Order(BaseModel):
-        list : list[Card_Play]
+        list: list[Card_Play]
 
     client = genai.Client()
 
     response = client.models.generate_content(
         model="gemini-3-flash-preview",
         contents=prompt,
-        config = types.GenerateContentConfig(
+        config=types.GenerateContentConfig(
             thinking_config=types.ThinkingConfig(thinking_level="minimal"),
             response_mime_type="application/json",
             response_json_schema=Play_Order.model_json_schema(),
-            )
+        ),
     )
     play_order = Play_Order.model_validate_json(response.text)
     return play_order
