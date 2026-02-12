@@ -4,6 +4,7 @@ import itertools
 from functools import partial
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 from game_setup import run_simulation
@@ -92,6 +93,7 @@ def run_all_simulations(param_combinations):
 
 def main():
     """Run the full simulation grid and save results."""
+    np.random.seed(42)
     strategy_variants = build_strategy_variants()
     n_players_list = [2, 3, 4, 5, 6]
     n_games = 10000
