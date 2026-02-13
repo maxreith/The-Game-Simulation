@@ -3,15 +3,16 @@ Simulation script to:
 1. Find optimal parameters for bonus_play_strategy
 2. Test win rates across different shuffle qualities
 """
-import numpy as np
+
 import pandas as pd
-from pathlib import Path
-from itertools import product
+from functools import partial
 from game_setup import run_simulation
-from game_strategies import bonus_play_strategy
+from strategies import bonus_play_strategy
 
 
-def find_optimal_parameters(simulation_results_path: str = 'simulation_results.parquet'):
+def find_optimal_parameters(
+    simulation_results_path: str = "simulation_results.parquet",
+):
     """
     Read simulation results and find the combination with highest win rate.
 
@@ -25,18 +26,18 @@ def find_optimal_parameters(simulation_results_path: str = 'simulation_results.p
     df = pd.read_parquet(simulation_results_path)
 
     # Find best parameters
-    best_idx = df['win_rate'].idxmax()
+    best_idx = df["win_rate"].idxmax()
     best_params = df.loc[best_idx]
 
     return {
-        'n_players': int(best_params['n_players']),
-        'bonus_play_threshold': int(best_params['bonus_play_threshold']),
-        'win_rate': best_params['win_rate'],
-        'all_results': df
+        "n_players": int(best_params["n_players"]),
+        "bonus_play_threshold": int(best_params["bonus_play_threshold"]),
+        "win_rate": best_params["win_rate"],
+        "all_results": df,
     }
 
 
-def test_shuffle_qualities(optimal_params: dict, n_games: int = 100):
+def evaluate_shuffle_qualities(optimal_params: dict, n_games: int = 100):
     """
     Test win rates across different shuffle qualities using optimal parameters.
 
@@ -52,22 +53,27 @@ def test_shuffle_qualities(optimal_params: dict, n_games: int = 100):
     results = []
 
     for n_shuffles in shuffle_qualities:
+        configured_strategy = partial(
+            bonus_play_strategy,
+            bonus_play_threshold=optimal_params["bonus_play_threshold"],
+        )
         result = run_simulation(
-            strategy=bonus_play_strategy,
+            strategy=configured_strategy,
             n_games=n_games,
-            n_players=optimal_params['n_players'],
-            bonus_play_threshold=optimal_params['bonus_play_threshold'],
+            n_players=optimal_params["n_players"],
             n_shuffles=n_shuffles,
-            use_custom_shuffle=True
+            use_custom_shuffle=True,
         )
 
-        results.append({
-            'n_shuffles': n_shuffles,
-            'shuffle_quality': get_shuffle_description(n_shuffles),
-            'victories': len(result['victories']),
-            'losses': len(result['losses']),
-            'win_rate': result['win_rate']
-        })
+        results.append(
+            {
+                "n_shuffles": n_shuffles,
+                "shuffle_quality": get_shuffle_description(n_shuffles),
+                "victories": len(result["victories"]),
+                "losses": len(result["losses"]),
+                "win_rate": result["win_rate"],
+            }
+        )
 
     # Convert to DataFrame
     df = pd.DataFrame(results)
@@ -92,14 +98,16 @@ def get_shuffle_description(n_shuffles: int) -> str:
 def main():
     """Run the complete simulation pipeline."""
     # Phase 1: Find optimal parameters from simulation results
-    optimal_params = find_optimal_parameters('simulation_results.parquet')
+    optimal_params = find_optimal_parameters("simulation_results.parquet")
 
     # Phase 2: Test shuffle qualities (using even more games for accurate comparison)
     n_games_shuffle_test = 1000
-    shuffle_results = test_shuffle_qualities(optimal_params, n_games=n_games_shuffle_test)
+    shuffle_results = evaluate_shuffle_qualities(
+        optimal_params, n_games=n_games_shuffle_test
+    )
 
     # Save results
-    shuffle_results.to_parquet('shuffle_quality_results.parquet', index=False)
+    shuffle_results.to_parquet("shuffle_quality_results.parquet", index=False)
 
 
 if __name__ == "__main__":
