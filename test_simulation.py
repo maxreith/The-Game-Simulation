@@ -5,7 +5,7 @@ Quick test to verify the simulation works before running full simulations.
 from simulate_shuffle_quality import find_optimal_parameters, evaluate_shuffle_qualities
 
 # Test reading optimal parameters from parquet
-optimal = find_optimal_parameters("simulation_results.parquet")
+optimal = find_optimal_parameters("bld/simulation_results.parquet")
 print(
     f"Optimal parameters: n_players={optimal['n_players']}, threshold={optimal['bonus_play_threshold']}, win_rate={optimal['win_rate']:.2%}"
 )

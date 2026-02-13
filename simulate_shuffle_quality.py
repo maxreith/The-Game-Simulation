@@ -11,7 +11,7 @@ from strategies import bonus_play_strategy
 
 
 def find_optimal_parameters(
-    simulation_results_path: str = "simulation_results.parquet",
+    simulation_results_path: str = "bld/simulation_results.parquet",
 ):
     """
     Read simulation results and find the combination with highest win rate.
@@ -98,7 +98,7 @@ def get_shuffle_description(n_shuffles: int) -> str:
 def main():
     """Run the complete simulation pipeline."""
     # Phase 1: Find optimal parameters from simulation results
-    optimal_params = find_optimal_parameters("simulation_results.parquet")
+    optimal_params = find_optimal_parameters()
 
     # Phase 2: Test shuffle qualities (using even more games for accurate comparison)
     n_games_shuffle_test = 1000
@@ -107,7 +107,7 @@ def main():
     )
 
     # Save results
-    shuffle_results.to_parquet("shuffle_quality_results.parquet", index=False)
+    shuffle_results.to_parquet("bld/shuffle_quality_results.parquet", index=False)
 
 
 if __name__ == "__main__":
