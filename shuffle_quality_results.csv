@@ -1,9 +1,0 @@
-n_shuffles,shuffle_quality,victories,losses,win_rate
-1,Very Poor,1000,0,1.0
-2,Very Poor,992,8,0.992
-5,Poor,923,77,0.923
-10,Poor,761,239,0.761
-20,Moderate,398,602,0.398
-50,Moderate,149,851,0.149
-100,Good,78,922,0.078
-200,Excellent,56,944,0.056

@@ -3,12 +3,13 @@ Quick test to verify the simulation works before running full simulations.
 """
 from run_simulations import find_optimal_parameters, test_shuffle_qualities
 
-# Quick test with small numbers
-print("Testing with n_games=5 for speed...")
-optimal = find_optimal_parameters(n_games=5)
-print(f"\nOptimal parameters found: {optimal}")
+# Test reading optimal parameters from parquet
+optimal = find_optimal_parameters('simulation_results.parquet')
+print(f"Optimal parameters: n_players={optimal['n_players']}, threshold={optimal['bonus_play_threshold']}, win_rate={optimal['win_rate']:.2%}")
 
-print("\n" + "="*60)
-print("Testing shuffle qualities with n_games=5...")
+# Quick test of shuffle qualities with small numbers
+print("\nTesting shuffle qualities with n_games=5...")
 shuffle_df = test_shuffle_qualities(optimal, n_games=5)
-print("\nShuffle test completed!")
+print("Shuffle test completed!")
+print(f"\nResults shape: {shuffle_df.shape}")
+print(f"Win rates: {shuffle_df['win_rate'].tolist()}")
