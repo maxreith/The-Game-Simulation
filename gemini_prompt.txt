@@ -4,14 +4,33 @@ You are playing the card game 'The Game'.
 {rules}
 
 ## Current Game State
-Your hand is: {player_hand}
 
-The current stacks and their top cards are:
+Your hand: {player_hand}
+
+### Stack Status (IMPORTANT - Read Carefully!)
 {stack_descriptions}
 
-Note that decreasing piles are identified with integers 0 and 1, and increasing piles with integers 2 and 3. Thus, to play a card on the first decreasing pile, you would specify stack 0. To play on the second increasing pile, you would specify stack 3.
+## Stack Rules Reminder
+
+**DECREASING stacks (0 and 1):** You MUST play a card that is LOWER than the top card, OR exactly 10 HIGHER (reset move).
+**INCREASING stacks (2 and 3):** You MUST play a card that is HIGHER than the top card, OR exactly 10 LOWER (reset move).
+
+### Examples of VALID plays:
+- Stack 0 (decreasing) has top=75 → You can play 74, 50, 23, or any card < 75. You can also play 85 (reset: 75+10=85).
+- Stack 2 (increasing) has top=30 → You can play 31, 45, 99, or any card > 30. You can also play 20 (reset: 30-10=20).
+
+### Examples of INVALID plays:
+- Stack 0 (decreasing) has top=75 → You CANNOT play 76, 80, 99 (these are higher, not a reset).
+- Stack 2 (increasing) has top=30 → You CANNOT play 29, 15, 2 (these are lower, not a reset).
 
 ## Your Task
-You must play at least {n_cards_to_play} cards from your hand. You must avoid invalid plays if you can. Play stack resets if possible.
+
+You must play at least {n_cards_to_play} cards from your hand.
+
+Before outputting your answer:
+1. For each card you want to play, verify it follows the rules above
+2. Check: Is the stack decreasing (0,1) or increasing (2,3)?
+3. Check: Is your card valid for that stack type?
+4. Prioritize reset moves (+10 or -10) when available - they save space on the stacks
 
 Which cards should you play and on which stacks?

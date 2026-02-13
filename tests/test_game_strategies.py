@@ -5,6 +5,10 @@ from utils import _play_to_stack, GameOverError, create_stacks
 from strategies import bonus_play_strategy, _call_api_to_get_play_order, gemini_strategy
 
 
+def assert_stack_equals(stacks, expected_array):
+    assert any(np.array_equal(expected_array, s.to_array()) for s in stacks)
+
+
 @pytest.fixture
 def empty_stacks():
     return create_stacks(99, 99, 1, 1)
@@ -55,28 +59,27 @@ def test_play_to_stack_invalid_move(midgame_stacks, normal_hand):
         )
 
 
-def test_bonus_play_strategy_play_wo_bonus(empty_stacks, normal_hand):
-    actual_hand, actual_stacks = bonus_play_strategy(normal_hand, empty_stacks)
-    expected_hand = np.array([40, 45, 51, 57])
-    expected_stack = np.array([1, 2, 22])
-
+@pytest.mark.parametrize(
+    "hand,expected_hand,expected_stack",
+    [
+        # without bonus
+        (
+            np.array([2, 22, 40, 45, 51, 57]),
+            np.array([40, 45, 51, 57]),
+            np.array([1, 2, 22]),
+        ),
+        # with bonus
+        (
+            np.array([2, 3, 7, 40, 50, 55]),
+            np.array([40, 50, 55]),
+            np.array([1, 2, 3, 7]),
+        ),
+    ],
+)
+def test_bonus_play_strategy(empty_stacks, hand, expected_hand, expected_stack):
+    actual_hand, actual_stacks = bonus_play_strategy(hand, empty_stacks)
     assert np.array_equal(actual_hand, expected_hand)
-    assert any(
-        np.array_equal(expected_stack, stack.to_array()) for stack in actual_stacks
-    )
-
-
-def test_bonus_play_strategy_play_with_bonus(empty_stacks):
-    actual_player, actual_stacks = bonus_play_strategy(
-        np.array([2, 3, 7, 40, 50, 55]), empty_stacks
-    )
-    expected_player = np.array([40, 50, 55])
-    expected_stack = np.array([1, 2, 3, 7])
-
-    assert np.array_equal(actual_player, expected_player)
-    assert any(
-        np.array_equal(expected_stack, stack.to_array()) for stack in actual_stacks
-    )
+    assert_stack_equals(actual_stacks, expected_stack)
 
 
 def test_bonus_play_strategy_play_entire_hand(midgame_stacks):
@@ -86,9 +89,7 @@ def test_bonus_play_strategy_play_entire_hand(midgame_stacks):
     expected_player = np.array([38])
     expected_stack = np.array([20, 27, 17, 7, 8, 12])
     assert np.array_equal(actual_player, expected_player)
-    assert any(
-        np.array_equal(expected_stack, stack.to_array()) for stack in actual_stacks
-    )
+    assert_stack_equals(actual_stacks, expected_stack)
 
 
 def test_bonus_play_strategy_game_over(game_over_stacks):
@@ -115,9 +116,7 @@ def test_gemini_strategy_plays_reasonable(midgame_stacks):
     expected_player = np.array([])
     expected_stack = np.array([20, 21, 22])
     assert np.array_equal(actual_player, expected_player)
-    assert any(
-        np.array_equal(expected_stack, stack.to_array()) for stack in actual_stacks
-    )
+    assert_stack_equals(actual_stacks, expected_stack)
 
 
 def test_gemini_strategy_game_over(game_over_stacks):

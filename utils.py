@@ -160,10 +160,26 @@ def _play_to_stack(player, card, chosen_stack, all_stacks):
     return new_player, new_stacks
 
 
+def _build_stack_description(stack_idx, top_value):
+    """Build a detailed description of a stack's state and valid moves."""
+    if stack_idx < 2:
+        direction = "DECREASING"
+        valid_range = f"any card < {top_value}"
+        reset_value = top_value + 10
+        reset_note = f"or exactly {reset_value} (reset)" if reset_value <= 99 else ""
+    else:
+        direction = "INCREASING"
+        valid_range = f"any card > {top_value}"
+        reset_value = top_value - 10
+        reset_note = f"or exactly {reset_value} (reset)" if reset_value >= 2 else ""
+
+    return f"Stack {stack_idx} ({direction}): top={top_value} → Valid plays: {valid_range} {reset_note}".strip()
+
+
 def _call_api_to_get_play_order(player, stacks, n_cards_to_play):
     """Get play order from Gemini API."""
     stack_descriptions = "\n".join(
-        [f"Stack {i}: top = {stack.top}" for i, stack in enumerate(stacks)]
+        [_build_stack_description(i, stack.top) for i, stack in enumerate(stacks)]
     )
 
     prompt_template = _load_prompt_template()
