@@ -2,7 +2,7 @@
 Quick test to verify the simulation works before running full simulations.
 """
 
-from run_simulations import find_optimal_parameters, evaluate_shuffle_qualities
+from simulate_shuffle_quality import find_optimal_parameters, evaluate_shuffle_qualities
 
 # Test reading optimal parameters from parquet
 optimal = find_optimal_parameters("simulation_results.parquet")
