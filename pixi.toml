@@ -8,6 +8,7 @@ version = "0.1.0"
 [tasks]
 
 [dependencies]
+python = ">=3.13,<3.14"
 numpy = ">=2.3.5,<3"
 pytest = ">=9.0.1,<10"
 ipykernel = ">=7.1.0,<8"
@@ -22,6 +23,7 @@ pydantic = ">=2.12.5,<3"
 typing = ">=3.10.0.0,<4"
 python-dotenv = ">=1.2.1,<2"
 matplotlib = ">=3.10.8,<4"
+pytask = ">=0.5.8,<0.6"
 
 [pypi-dependencies]
 pdbp = "*"
