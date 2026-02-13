@@ -58,10 +58,10 @@ def _draw_cards(player: np.ndarray, remaining_deck: np.ndarray, hand_size: int =
     return new_player, remaining_deck[cards_to_draw:]
 
 
-def run_game(strategy, n_players: int = 3, n_shuffles: int = 200, bonus_play_threshold: int = 4) -> dict:
+def run_game(strategy, n_players: int = 3, n_shuffles: int = 200, bonus_play_threshold: int = 4, use_custom_shuffle: bool = False) -> dict:
     "Runs an instance of the game with a given strategy."
     hand_size = 6 if n_players > 2 else 7
-    shuffled_deck = _shuffle_cards(n_shuffles=n_shuffles)   
+    shuffled_deck = _shuffle_cards_custom(n_shuffles=n_shuffles) if use_custom_shuffle else _shuffle_cards(n_shuffles=n_shuffles)   
     players, remaining_deck, stacks = _initiate_game(n_players, shuffled_deck, hand_size)
 
     total_cards = lambda: len(remaining_deck) + sum(len(p) for p in players)
@@ -86,15 +86,15 @@ def run_game(strategy, n_players: int = 3, n_shuffles: int = 200, bonus_play_thr
         return {"victory": False, "stacks": [s.to_array() for s in stacks], "cards_remaining": total_cards()}
 
 
-def run_simulation(strategy, n_games: int = 100, n_players: int = 3, bonus_play_threshold: int = 4) -> dict:
+def run_simulation(strategy, n_games: int = 100, n_players: int = 3, bonus_play_threshold: int = 4, n_shuffles: int = 200, use_custom_shuffle: bool = False) -> dict:
     """Run multiple games and collect data."""
     victories = []
     losses = []
     for _ in range(n_games):
         if strategy == bonus_play_strategy:
-            result = run_game(strategy, n_players=n_players, bonus_play_threshold=bonus_play_threshold)
+            result = run_game(strategy, n_players=n_players, bonus_play_threshold=bonus_play_threshold, n_shuffles=n_shuffles, use_custom_shuffle=use_custom_shuffle)
         else:
-            result = run_game(strategy, n_players=n_players)
+            result = run_game(strategy, n_players=n_players, n_shuffles=n_shuffles, use_custom_shuffle=use_custom_shuffle)
         
         if result["victory"]:
             victories.append(result)
