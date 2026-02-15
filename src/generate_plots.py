@@ -119,6 +119,7 @@ def main() -> None:
     """Load data and generate plots."""
     sim_results = pd.read_parquet("bld/simulation_results.parquet")
     shuffle_results = pd.read_parquet("bld/shuffle_quality_results.parquet")
+    gemini_results = pd.read_parquet("bld/gemini_thinking_results.parquet")
 
     optimal_params = find_optimal_parameters(sim_results)
 
@@ -126,6 +127,7 @@ def main() -> None:
     plot_shuffle_evaluation(
         shuffle_results, optimal_params, "bld/shuffle_evaluation.png"
     )
+    plot_gemini_thinking(gemini_results, "bld/gemini_thinking.png")
 
 
 if __name__ == "__main__":
