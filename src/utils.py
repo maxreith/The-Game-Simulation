@@ -125,20 +125,27 @@ def create_stacks(dec1_top=99, dec2_top=99, inc1_top=1, inc2_top=1):
 # =============================================================================
 # Helper Functions
 # =============================================================================
-def _play_to_stack(player, card, chosen_stack, all_stacks):
+def _play_to_stack(hand, card, chosen_stack, all_stacks):
     """Play a card to a stack by index if valid. Pure function (copies stacks).
 
-    Stack indices: 0=decreasing_1, 1=decreasing_2, 2=increasing_1, 3=increasing_2
+    Args:
+        hand: Array of cards in the player's hand.
+        card: Card value to play.
+        chosen_stack: Stack index (0=decreasing_1, 1=decreasing_2, 2=increasing_1, 3=increasing_2).
+        all_stacks: List of Stack objects.
+
+    Returns:
+        Tuple of (new_hand, new_stacks) after playing the card.
     """
     # Skip if no card is passed
     if isinstance(card, np.ndarray) and len(card) == 0:
-        return player, all_stacks
+        return hand, all_stacks
 
     stack = all_stacks[chosen_stack]
     top_card = stack.top
 
     # Check if player has card
-    if card not in player:
+    if card not in hand:
         raise ValueError(f"Player does not have card {card}.")
 
     # Check if card can be played (indices 2,3 are increasing stacks)
@@ -149,15 +156,15 @@ def _play_to_stack(player, card, chosen_stack, all_stacks):
 
     if not can_play:
         raise ValueError(
-            f"Card {card} cannot be played on stack {chosen_stack}: Tried to play {card} on top of {top_card}. The player's hand: {player}. The other stacks tops: {[s.top for s in all_stacks]}"
+            f"Card {card} cannot be played on stack {chosen_stack}: Tried to play {card} on top of {top_card}. Hand: {hand}. Stack tops: {[s.top for s in all_stacks]}"
         )
 
     # Create copies to maintain pure function semantics
     new_stacks = [s.copy() for s in all_stacks]
     new_stacks[chosen_stack].push(card)
-    new_player = player[player != card]
+    new_hand = hand[hand != card]
 
-    return new_player, new_stacks
+    return new_hand, new_stacks
 
 
 def _build_stack_description(stack_idx, top_value):
@@ -177,12 +184,12 @@ def _build_stack_description(stack_idx, top_value):
 
 
 def _call_api_to_get_play_order(
-    player, stacks, n_cards_to_play, thinking_level="minimal"
+    hand, stacks, n_cards_to_play, thinking_level="minimal"
 ):
     """Get play order from Gemini API.
 
     Args:
-        player: Array of cards in player's hand.
+        hand: Array of cards in the player's hand.
         stacks: List of Stack objects representing game stacks.
         n_cards_to_play: Minimum number of cards to play this turn.
         thinking_level: Gemini thinking level ("minimal", "low", "medium", "high").
@@ -199,7 +206,7 @@ def _call_api_to_get_play_order(
 
     prompt = prompt_template.format(
         rules=rules,
-        player_hand=player,
+        player_hand=hand,
         stack_descriptions=stack_descriptions,
         n_cards_to_play=n_cards_to_play,
     )

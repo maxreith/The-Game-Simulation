@@ -16,7 +16,7 @@ def build_strategy_variants():
 
     Returns:
         A list of dicts with 'name' and 'func' keys. Each 'func' is a callable
-        with uniform signature (player, stacks, remaining_deck) -> (player, stacks).
+        with uniform signature (hand, stacks, remaining_deck) -> (hand, stacks).
     """
     variants = []
     for threshold in [0, 1, 2, 3, 4, 5, 6, 8, 10]:

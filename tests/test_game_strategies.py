@@ -31,12 +31,12 @@ def normal_hand():
 
 def test_play_to_stack_plays_single_card(empty_stacks):
     stacks = empty_stacks
-    actual_new_player, actual_new_stacks = _play_to_stack(
-        player=np.array([10, 20, 30]), card=20, chosen_stack=2, all_stacks=stacks
+    actual_new_hand, actual_new_stacks = _play_to_stack(
+        hand=np.array([10, 20, 30]), card=20, chosen_stack=2, all_stacks=stacks
     )
-    expected_new_player = np.array([10, 30])
+    expected_new_hand = np.array([10, 30])
     expected_new_stack = np.array([1, 20])
-    assert np.array_equal(actual_new_player, expected_new_player)
+    assert np.array_equal(actual_new_hand, expected_new_hand)
     assert np.array_equal(actual_new_stacks[2].to_array(), expected_new_stack)
 
 
@@ -44,7 +44,7 @@ def test_play_to_stack_card_missing(empty_stacks):
     stacks = empty_stacks
     with pytest.raises(ValueError):
         _play_to_stack(
-            player=np.array([10, 20, 30]), card=25, chosen_stack=2, all_stacks=stacks
+            hand=np.array([10, 20, 30]), card=25, chosen_stack=2, all_stacks=stacks
         )
 
 
@@ -52,7 +52,7 @@ def test_play_to_stack_invalid_move(midgame_stacks, normal_hand):
     stacks, hand = midgame_stacks, normal_hand
     with pytest.raises(ValueError):
         _play_to_stack(
-            player=hand,
+            hand=hand,
             card=10,  # card is not in hand
             chosen_stack=2,
             all_stacks=stacks,
@@ -100,7 +100,7 @@ def test_bonus_play_strategy_game_over(game_over_stacks):
 def test_call_api_to_get_play_order_structure(empty_stacks):
     stacks = empty_stacks
     play_order = _call_api_to_get_play_order(
-        player=np.array([10, 20, 30]), stacks=stacks, n_cards_to_play=2
+        hand=np.array([10, 20, 30]), stacks=stacks, n_cards_to_play=2
     )
     assert hasattr(play_order, "list")
     assert len(play_order.list) >= 2
@@ -123,7 +123,7 @@ def test_gemini_strategy_game_over(game_over_stacks):
     stacks = game_over_stacks
     with pytest.raises(GameOverError):
         gemini_strategy(
-            player=np.array([4, 5, 6, 7]),
+            hand=np.array([4, 5, 6, 7]),
             stacks=stacks,
             remaining_deck=np.arange(2, 99),
         )

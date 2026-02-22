@@ -29,13 +29,22 @@ def _shuffle_cards(card_deck=None, n_shuffles=200):
 
 
 def _initiate_game(n_players, card_deck, hand_size=6):
-    """Create and deal cards to new players."""
-    players = []
+    """Create and deal cards to players.
+
+    Args:
+        n_players: Number of players in the game.
+        card_deck: Shuffled deck of cards.
+        hand_size: Number of cards per player.
+
+    Returns:
+        Tuple of (hands, remaining_deck, stacks).
+    """
+    hands = []
     card_index = 0
 
     for _ in range(n_players):
-        player_cards = card_deck[card_index : card_index + hand_size]
-        players.append(player_cards)
+        hand_cards = card_deck[card_index : card_index + hand_size]
+        hands.append(hand_cards)
         card_index += hand_size
 
     # Stack order: [decreasing_1, decreasing_2, increasing_1, increasing_2]
@@ -46,23 +55,33 @@ def _initiate_game(n_players, card_deck, hand_size=6):
         Stack(1),  # increasing_2 (index 3)
     ]
 
-    return players, card_deck[card_index:], stacks
+    return hands, card_deck[card_index:], stacks
 
 
-def _draw_cards(player, remaining_deck, hand_size=6):
+def _draw_cards(hand, remaining_deck, hand_size=6):
+    """Draw cards from deck to refill hand.
+
+    Args:
+        hand: Array of cards currently in the player's hand.
+        remaining_deck: Cards remaining in the deck.
+        hand_size: Target hand size.
+
+    Returns:
+        Tuple of (new_hand, remaining_deck).
+    """
     if len(remaining_deck) == 0:
-        return player, remaining_deck
+        return hand, remaining_deck
 
-    cards_to_draw = hand_size - len(player)
-    new_player = np.append(player, remaining_deck[:cards_to_draw])
-    return new_player, remaining_deck[cards_to_draw:]
+    cards_to_draw = hand_size - len(hand)
+    new_hand = np.append(hand, remaining_deck[:cards_to_draw])
+    return new_hand, remaining_deck[cards_to_draw:]
 
 
 def run_game(strategy, n_players=3, n_shuffles=200, use_custom_shuffle=False):
-    """Runs an instance of the game with a given strategy.
+    """Run an instance of the game with a given strategy.
 
     Args:
-        strategy: A callable with signature (player, stacks, remaining_deck) -> (player, stacks).
+        strategy: A callable with signature (hand, stacks, remaining_deck) -> (hand, stacks).
             Strategy-specific parameters should be pre-configured via functools.partial.
         n_players: Number of players in the game.
         n_shuffles: Number of shuffles for the deck.
@@ -77,24 +96,22 @@ def run_game(strategy, n_players=3, n_shuffles=200, use_custom_shuffle=False):
         if use_custom_shuffle
         else _shuffle_cards(n_shuffles=n_shuffles)
     )
-    players, remaining_deck, stacks = _initiate_game(
-        n_players, shuffled_deck, hand_size
-    )
+    hands, remaining_deck, stacks = _initiate_game(n_players, shuffled_deck, hand_size)
 
     turn = 0
 
     try:
-        while len(remaining_deck) + sum(len(p) for p in players) > 0:
+        while len(remaining_deck) + sum(len(h) for h in hands) > 0:
             turn += 1
             if turn > 100:
                 raise RuntimeError("Too many turns!")
 
-            for i, player in enumerate(players):
-                if len(player) == 0:
+            for i, hand in enumerate(hands):
+                if len(hand) == 0:
                     continue
-                player, stacks = strategy(player, stacks, remaining_deck)
-                player, remaining_deck = _draw_cards(player, remaining_deck, hand_size)
-                players[i] = player
+                hand, stacks = strategy(hand, stacks, remaining_deck)
+                hand, remaining_deck = _draw_cards(hand, remaining_deck, hand_size)
+                hands[i] = hand
 
         return {
             "victory": True,
@@ -104,7 +121,7 @@ def run_game(strategy, n_players=3, n_shuffles=200, use_custom_shuffle=False):
         }
 
     except GameOverError:
-        cards_remaining = len(remaining_deck) + sum(len(p) for p in players)
+        cards_remaining = len(remaining_deck) + sum(len(h) for h in hands)
         return {
             "victory": False,
             "stacks": [s.to_array() for s in stacks],
@@ -119,7 +136,7 @@ def run_simulation(
     """Run multiple games and collect data.
 
     Args:
-        strategy: A callable with signature (player, stacks, remaining_deck) -> (player, stacks).
+        strategy: A callable with signature (hand, stacks, remaining_deck) -> (hand, stacks).
             Strategy-specific parameters should be pre-configured via functools.partial.
         n_games: Number of games to simulate.
         n_players: Number of players in each game.
