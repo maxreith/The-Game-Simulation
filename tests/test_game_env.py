@@ -16,12 +16,12 @@ class TestTheGameEnv:
         check_env(env, skip_render_check=True)
 
     def test_action_space_size(self):
-        """Action space is hand_size * 4 stacks."""
+        """Action space is hand_size * 4 stacks + 1 end turn action."""
         env = TheGameEnv(n_players=3, hand_size=6)
-        assert env.action_space.n == 24
+        assert env.action_space.n == 25  # 6*4 + 1
 
         env = TheGameEnv(n_players=2, hand_size=7)
-        assert env.action_space.n == 28
+        assert env.action_space.n == 29  # 7*4 + 1
 
     def test_observation_space_shape(self):
         """Observation includes hand, stacks, deck, cards_played, min_required."""
@@ -43,11 +43,11 @@ class TestTheGameEnv:
         np.testing.assert_array_equal(obs1, obs2)
 
     def test_action_mask_shape(self):
-        """Action mask has correct shape."""
+        """Action mask has correct shape (includes end turn action)."""
         env = TheGameEnv(n_players=3, hand_size=6)
         env.reset(seed=42)
         mask = env.action_masks()
-        assert mask.shape == (24,)
+        assert mask.shape == (25,)  # 6*4 + 1 end turn
         assert mask.dtype == bool
 
     def test_action_mask_has_valid_actions(self):
@@ -230,3 +230,46 @@ class TestMultiPlayer:
 
         env5 = TheGameEnv(n_players=5)
         assert env5.hand_size == 6
+
+
+class TestEndTurnAction:
+    """Tests for the explicit end turn action."""
+
+    def test_end_turn_action_index(self):
+        """End turn is the last action in the action space."""
+        env = TheGameEnv(hand_size=6)
+        assert env.action_space.n == 25
+        # end_turn = 24 (index hand_size * 4)
+
+    def test_end_turn_invalid_before_minimum(self):
+        """Cannot end turn before playing minimum cards."""
+        env = TheGameEnv()
+        env.reset(seed=42)
+        end_turn = env.hand_size * 4
+        assert not env.action_masks()[end_turn]
+
+    def test_end_turn_valid_after_minimum(self):
+        """Can end turn after playing 2 cards."""
+        env = TheGameEnv()
+        env.reset(seed=42)
+        # Play 2 cards
+        for _ in range(2):
+            mask = env.action_masks()
+            action = np.where(mask)[0][0]
+            env.step(action)
+        end_turn = env.hand_size * 4
+        assert env.action_masks()[end_turn]
+
+    def test_end_turn_switches_player(self):
+        """End turn action moves to next player."""
+        env = TheGameEnv(n_players=2)
+        env.reset(seed=42)
+        assert env.current_player_idx == 0
+        # Play 2 cards then end turn
+        for _ in range(2):
+            mask = env.action_masks()
+            action = np.where(mask)[0][0]
+            env.step(action)
+        end_turn = env.hand_size * 4
+        env.step(end_turn)
+        assert env.current_player_idx == 1

@@ -43,9 +43,10 @@ class TheGameEnv(gym.Env):
         self.win_reward = win_reward
         self.loss_penalty = loss_penalty
 
-        # Action: card_index * 4 + stack_index
+        # Action: card_index * 4 + stack_index, plus one "end turn" action
         # card_index in [0, hand_size-1], stack_index in [0, 3]
-        self.action_space = spaces.Discrete(self.hand_size * 4)
+        # Last action (hand_size * 4) = end turn
+        self.action_space = spaces.Discrete(self.hand_size * 4 + 1)
 
         # Observation: [hand (hand_size), stack_tops (4), deck_remaining (1),
         #               cards_played_this_turn (1), min_cards_required (1)]
@@ -126,10 +127,11 @@ class TheGameEnv(gym.Env):
         """Return boolean mask of valid actions for current player.
 
         Returns:
-            np.ndarray of shape (hand_size * 4,) with True for valid actions.
+            np.ndarray of shape (hand_size * 4 + 1,) with True for valid actions.
+            The last index is the "end turn" action.
         """
         hand = self.hands[self.current_player_idx]
-        mask = np.zeros(self.hand_size * 4, dtype=bool)
+        mask = np.zeros(self.hand_size * 4 + 1, dtype=bool)
 
         for card_idx in range(self.hand_size):
             if card_idx >= len(hand):
@@ -139,6 +141,11 @@ class TheGameEnv(gym.Env):
                 if self._is_valid_play(card, stack_idx):
                     action = card_idx * 4 + stack_idx
                     mask[action] = True
+
+        # End turn action is valid if minimum cards have been played
+        end_turn_action = self.hand_size * 4
+        if self.cards_played_this_turn >= self._min_cards_required():
+            mask[end_turn_action] = True
 
         return mask
 
@@ -196,10 +203,11 @@ class TheGameEnv(gym.Env):
         return self._get_observation(), {"action_mask": self.action_masks()}
 
     def step(self, action):
-        """Execute one card play action.
+        """Execute one card play action or end turn.
 
         Args:
-            action: Integer in [0, hand_size * 4) encoding (card_idx, stack_idx).
+            action: Integer in [0, hand_size * 4] encoding (card_idx, stack_idx)
+                or end turn (hand_size * 4).
 
         Returns:
             observation: New game state.
@@ -208,6 +216,33 @@ class TheGameEnv(gym.Env):
             truncated: Always False (no time limit).
             info: Additional information including action mask.
         """
+        end_turn_action = self.hand_size * 4
+
+        # Handle end turn action
+        if action == end_turn_action:
+            if self.cards_played_this_turn < self._min_cards_required():
+                return self._get_observation(), -1.0, True, False, {"invalid": True}
+
+            self._end_turn()
+
+            # Check if next player can play
+            if not np.any(self.action_masks()):
+                return (
+                    self._get_observation(),
+                    -self.loss_penalty,
+                    True,
+                    False,
+                    {"victory": False, "reason": "next_player_stuck"},
+                )
+
+            return (
+                self._get_observation(),
+                0.0,
+                False,
+                False,
+                {"action_mask": self.action_masks()},
+            )
+
         card_idx, stack_idx = self._decode_action(action)
         hand = self.hands[self.current_player_idx]
 
