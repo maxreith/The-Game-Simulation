@@ -212,3 +212,101 @@ model.save("bld/the_game_ppo")
 1. Short training run (1000 steps) - verify no crashes
 1. Compare trained agent vs `bonus_play_strategy` win rate
 1. Monitor training via TensorBoard: `pixi run tensorboard --logdir bld/rl_logs/`
+
+## RL Reward Tuning Experiments
+
+### Baseline Performance
+
+| Strategy            | Players | Win Rate |
+| ------------------- | ------- | -------- |
+| bonus_play_strategy | 3       | 1.4%     |
+| bonus_play_strategy | 5       | 4.4%     |
+
+### Grid Search Results (300k steps, 5 players, 500 eval games)
+
+Tested 9 reward configurations with simplified reward shaping (disabled progress_reward,
+stack_health, phase_multiplier).
+
+| Config                | Win% | Avg Cards | reward_per_card | win_reward | loss_penalty | trick_play | dist_penalty |
+| --------------------- | ---- | --------- | --------------- | ---------- | ------------ | ---------- | ------------ |
+| trick_and_distance    | 0%   | 63.2      | 0.05            | 10.0       | 0.0          | 1.0        | 0.005        |
+| with_loss_penalty     | 0%   | 62.8      | 0.05            | 10.0       | 1.0          | 1.0        | 0.005        |
+| high_card_reward      | 0%   | 62.2      | 0.10            | 10.0       | 0.0          | 1.0        | 0.005        |
+| low_card_reward       | 0%   | 59.5      | 0.01            | 10.0       | 0.0          | 1.0        | 0.005        |
+| very_high_card_reward | 0%   | 59.1      | 0.20            | 10.0       | 0.0          | 1.0        | 0.005        |
+| high_both_terminal    | 0%   | 58.3      | 0.05            | 50.0       | 2.0          | 1.0        | 0.005        |
+| high_win_bonus        | 0%   | 58.2      | 0.05            | 50.0       | 0.0          | 1.0        | 0.005        |
+| simple_baseline       | 0%   | 56.2      | 0.05            | 10.0       | 0.0          | 0.0        | 0.000        |
+| with_trick_bonus      | 0%   | 33.7      | 0.05            | 10.0       | 0.0          | 1.0        | 0.000        |
+
+**Key findings:**
+
+- All configs achieved 0% win rate (vs 4.4% baseline) - 300k steps insufficient
+- `trick_and_distance` played most cards (63.2/98)
+- `with_trick_bonus` alone hurt performance badly (33.7 cards) - trick bonus without
+  distance penalty causes poor play
+- Distance penalty improves card count significantly
+
+### Best Known Configuration (84 cards avg, 1% win rate)
+
+Achieved in commit `fd61005` with 2M timesteps training.
+
+**Environment Configuration:**
+
+```python
+TheGameEnv(
+    n_players=5,  # 5 players (easier than 3)
+    reward_per_card=0.02,
+    win_reward=10.0,
+    loss_penalty=0.0,  # No penalty for losing
+    trick_play_reward=1.0,
+    distance_penalty_scale=0.003,
+    progress_reward_scale=3.0,  # Reward partial game completion
+    stack_health_scale=0.0,  # Not used
+    phase_multiplier_scale=0.0,  # Not used
+)
+```
+
+**Observation Space (17 features):**
+
+- Hand cards (6)
+- Stack tops (4)
+- Stack gaps (4)
+- Deck remaining, cards played this turn, min cards required (3)
+- Note: Simpler than current (no other_hand_sizes, total_progress, hand_stats)
+
+**PPO Hyperparameters:**
+
+```python
+MaskablePPO(
+    gamma=0.99,  # Discount factor
+    gae_lambda=0.95,
+    ent_coef=0.02,  # Fixed (no decay)
+    learning_rate=3e-4,  # Fixed (no schedule)
+    n_steps=2048,
+    batch_size=256,
+    n_epochs=10,
+    clip_range=0.2,
+    net_arch=dict(pi=[256, 256], vf=[256, 256]),
+)
+```
+
+**Training Setup:**
+
+- Total timesteps: 2,000,000 (2M)
+- Parallel environments: CPU count (typically 8-12)
+- Training time: ~30-60 minutes on modern CPU
+
+**Results:**
+
+- Average cards played: ~84 / 98 (86%)
+- Win rate: 1% (vs 4.4% baseline strategy)
+- Random baseline: ~14 cards
+
+**Key insights:**
+
+- No loss penalty allows agent to explore risky plays
+- Progress reward (3.0 scale) crucial for learning partial success
+- Simpler observation space may improve learning efficiency
+- Fixed hyperparameters (vs schedules) worked well
+- 5 players makes game easier due to more cards per hand
