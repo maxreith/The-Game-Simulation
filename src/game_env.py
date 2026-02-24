@@ -243,7 +243,11 @@ class TheGameEnv(gym.Env):
         return card_idx, stack_idx
 
     def _end_turn(self):
-        """End current turn: draw cards, move to next player."""
+        """End current turn: draw cards, move to next player.
+
+        Skips players with empty hands, matching the behavior of run_game()
+        in game_setup.py.
+        """
         hand = self.hands[self.current_player_idx]
         cards_to_draw = self.hand_size - len(hand)
 
@@ -253,7 +257,11 @@ class TheGameEnv(gym.Env):
             self.hands[self.current_player_idx] = np.concatenate([hand, drawn])
             self.remaining_deck = self.remaining_deck[draw_count:]
 
-        self.current_player_idx = (self.current_player_idx + 1) % self.n_players
+        for _ in range(self.n_players):
+            self.current_player_idx = (self.current_player_idx + 1) % self.n_players
+            if len(self.hands[self.current_player_idx]) > 0:
+                break
+
         self.cards_played_this_turn = 0
         self.total_turns += 1
 

@@ -536,3 +536,145 @@ class TestEndTurnAction:
         end_turn = env.hand_size * 4
         env.step(end_turn)
         assert env.current_player_idx == 1
+
+
+class TestEmptyHandSkipping:
+    """Tests for skipping players with empty hands."""
+
+    def test_player_with_empty_hand_is_skipped(self):
+        """Player with empty hand is skipped, next player takes turn."""
+        env = TheGameEnv(n_players=3)
+        env.reset(seed=42)
+
+        env.hands[1] = np.array([], dtype=np.int32)
+        assert env.current_player_idx == 0
+
+        for _ in range(2):
+            mask = env.action_masks()
+            action = np.where(mask)[0][0]
+            env.step(action)
+
+        end_turn = env.hand_size * 4
+        env.step(end_turn)
+
+        assert env.current_player_idx == 2
+
+    def test_multiple_consecutive_empty_hands_skipped(self):
+        """Multiple consecutive players with empty hands are skipped."""
+        env = TheGameEnv(n_players=4)
+        env.reset(seed=42)
+
+        env.hands[1] = np.array([], dtype=np.int32)
+        env.hands[2] = np.array([], dtype=np.int32)
+
+        for _ in range(2):
+            mask = env.action_masks()
+            action = np.where(mask)[0][0]
+            env.step(action)
+
+        end_turn = env.hand_size * 4
+        env.step(end_turn)
+
+        assert env.current_player_idx == 3
+
+    def test_win_when_all_hands_and_deck_empty(self):
+        """Game is won when all hands are empty and deck is empty."""
+        from utils import Stack
+
+        env = TheGameEnv(n_players=2)
+        env.reset(seed=42)
+
+        env.stacks[2] = Stack.from_array([1, 50])
+        env.hands[0] = np.array([51], dtype=np.int32)
+        env.hands[1] = np.array([], dtype=np.int32)
+        env.remaining_deck = np.array([], dtype=np.int32)
+
+        action = 0 * 4 + 2
+        _, _, terminated, _, info = env.step(action)
+
+        assert terminated
+        assert info.get("victory", False)
+
+    def test_game_continues_after_skipping_empty_hands(self):
+        """Game continues normally after skipping empty-handed players."""
+        env = TheGameEnv(n_players=3)
+        env.reset(seed=42)
+
+        env.hands[1] = np.array([], dtype=np.int32)
+
+        for _ in range(2):
+            mask = env.action_masks()
+            action = np.where(mask)[0][0]
+            env.step(action)
+
+        end_turn = env.hand_size * 4
+        obs, reward, terminated, truncated, info = env.step(end_turn)
+
+        assert not terminated
+        assert env.current_player_idx == 2
+        assert len(env.hands[2]) > 0
+        assert np.any(env.action_masks())
+
+
+class TestWinRateParity:
+    """Tests ensuring TheGameEnv matches run_simulation win rates."""
+
+    def test_env_matches_run_simulation_win_rate(self):
+        """TheGameEnv produces similar win rates to run_simulation."""
+        from functools import partial
+
+        from game_setup import run_simulation
+        from strategies import _identify_min_distance_card, bonus_play_strategy
+
+        def play_game_bonus_strategy_env(env, seed, bonus_play_threshold=2):
+            obs, info = env.reset(seed=seed)
+
+            while True:
+                hand = env.hands[env.current_player_idx].copy()
+                stacks = env.stacks
+                n_cards_to_play = 2 if len(env.remaining_deck) > 0 else 1
+                cards_played = env.cards_played_this_turn
+                end_turn_action = env.hand_size * 4
+
+                if cards_played >= n_cards_to_play:
+                    try:
+                        _, _, min_diff = _identify_min_distance_card(hand, stacks)
+                        if min_diff > bonus_play_threshold:
+                            obs, _, term, trunc, info = env.step(end_turn_action)
+                            if term or trunc:
+                                return info.get("victory", False)
+                            continue
+                    except Exception:
+                        obs, _, term, trunc, info = env.step(end_turn_action)
+                        if term or trunc:
+                            return info.get("victory", False)
+                        continue
+
+                try:
+                    best_card, best_stack_idx, _ = _identify_min_distance_card(
+                        hand, stacks
+                    )
+                except Exception:
+                    return False
+
+                card_idx = np.where(hand == best_card)[0][0]
+                action = card_idx * 4 + best_stack_idx
+
+                obs, _, term, trunc, info = env.step(action)
+                if term or trunc:
+                    return info.get("victory", False)
+
+        n_games = 100
+        n_players = 5
+
+        np.random.seed(123)
+        strategy = partial(bonus_play_strategy, bonus_play_threshold=2)
+        result = run_simulation(strategy, n_games=n_games, n_players=n_players)
+        run_sim_wins = len(result["victories"])
+
+        env = TheGameEnv(n_players=n_players)
+        env_wins = sum(
+            1 for i in range(n_games) if play_game_bonus_strategy_env(env, seed=i)
+        )
+
+        assert abs(run_sim_wins - env_wins) <= 5
