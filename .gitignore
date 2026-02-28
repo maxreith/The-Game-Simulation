@@ -20,3 +20,4 @@ bld/
 .env
 .claude
 .claudeignore
+.vscode/
