@@ -7,7 +7,7 @@ import numpy as np
 import torch
 from sb3_contrib import MaskablePPO
 from sb3_contrib.common.wrappers import ActionMasker
-from stable_baselines3.common.callbacks import BaseCallback
+from stable_baselines3.common.callbacks import BaseCallback, CheckpointCallback
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv
 
@@ -187,7 +187,7 @@ def create_env(
 
 
 def train(
-    total_timesteps=2_000_000,
+    total_timesteps=20_000_000,
     n_players=5,
     n_envs=None,
     verbose=1,
@@ -243,9 +243,21 @@ def train(
         clip_range=0.2,
     )
 
+    checkpoint_dir = bld_dir / "rl_checkpoints"
+    checkpoint_dir.mkdir(exist_ok=True)
+
+    checkpoint_callback = CheckpointCallback(
+        save_freq=1_000_000 // n_envs,
+        save_path=str(checkpoint_dir),
+        name_prefix="the_game_ppo",
+        save_replay_buffer=False,
+        save_vecnormalize=False,
+    )
+
     callbacks = [
         GameMetricsCallback(verbose=verbose),
         EntropyScheduleCallback(start_ent=0.05, end_ent=0.005, verbose=verbose),
+        checkpoint_callback,
     ]
     model.learn(total_timesteps=total_timesteps, callback=callbacks)
     model.save(bld_dir / "the_game_ppo")

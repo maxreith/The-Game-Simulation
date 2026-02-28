@@ -449,7 +449,7 @@ def main():
     train_bc_then_rl(
         n_demo_games=10000,
         bc_epochs=100,
-        rl_timesteps=30_000_000,
+        rl_timesteps=20_000_000,
         n_players=5,
         verbose=1,
     )

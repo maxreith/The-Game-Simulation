@@ -1,5 +1,8 @@
 """Evaluate trained RL agent against baseline strategies."""
 
+import json
+import re
+from datetime import date
 from functools import partial
 from pathlib import Path
 
@@ -213,6 +216,178 @@ def _stats(arr):
     return float(np.mean(arr)), float(np.median(arr))
 
 
+def extract_step_count(filename: str) -> int | None:
+    """Extract training step count from checkpoint filename.
+
+    Args:
+        filename: Checkpoint filename like 'bc_rl_1000000_steps.zip'.
+
+    Returns:
+        Step count as integer, or None if pattern doesn't match.
+    """
+    match = re.search(r"_(\d+)_steps\.zip$", filename)
+    if match:
+        return int(match.group(1))
+    return None
+
+
+def evaluate_checkpoints(
+    checkpoint_dir: Path,
+    n_games: int = 1000,
+    n_players: int = 5,
+    seed: int = 42,
+    verbose: bool = True,
+) -> list[dict]:
+    """Evaluate all checkpoints in a directory.
+
+    Args:
+        checkpoint_dir: Directory containing checkpoint .zip files.
+        n_games: Number of games per checkpoint evaluation.
+        n_players: Number of players per game.
+        seed: Random seed for reproducibility.
+        verbose: Whether to print progress.
+
+    Returns:
+        List of dicts with training_steps, win_rate, avg_cards_per_game, etc.
+    """
+    checkpoint_dir = Path(checkpoint_dir)
+    checkpoints = sorted(checkpoint_dir.glob("*_steps.zip"))
+
+    if not checkpoints:
+        if verbose:
+            print(f"No checkpoints found in {checkpoint_dir}")
+        return []
+
+    results = []
+    for ckpt_path in checkpoints:
+        step_count = extract_step_count(ckpt_path.name)
+        if step_count is None:
+            if verbose:
+                print(f"Skipping {ckpt_path.name}: could not parse step count")
+            continue
+
+        if verbose:
+            print(f"Evaluating checkpoint at {step_count:,} steps...")
+
+        model = MaskablePPO.load(ckpt_path)
+        eval_results = evaluate_rl_agent(model, n_games, n_players, seed)
+
+        avg_cards = float(np.mean(eval_results["cards_per_game"]))
+        results.append(
+            {
+                "training_steps": step_count,
+                "win_rate": eval_results["win_rate"],
+                "avg_cards_per_game": avg_cards,
+                "victories": eval_results["victories"],
+                "losses": eval_results["losses"],
+            }
+        )
+
+        if verbose:
+            print(
+                f"  Win rate: {eval_results['win_rate']:.1%}, "
+                f"Avg cards: {avg_cards:.1f}"
+            )
+
+    results.sort(key=lambda x: x["training_steps"])
+    return results
+
+
+def save_results_json(
+    results: list[dict],
+    output_path: Path,
+    model_type: str,
+    n_players: int,
+    n_games: int,
+):
+    """Save evaluation results to JSON file.
+
+    Args:
+        results: List of checkpoint evaluation results.
+        output_path: Path to output JSON file.
+        model_type: Type of model (e.g., 'rl' or 'bc_rl').
+        n_players: Number of players per game.
+        n_games: Number of games per checkpoint evaluation.
+    """
+    output = {
+        "model_type": model_type,
+        "n_players": n_players,
+        "n_games": n_games,
+        "evaluated_at": str(date.today()),
+        "checkpoints": results,
+    }
+
+    output_path = Path(output_path)
+    output_path.parent.mkdir(exist_ok=True)
+    with open(output_path, "w") as f:
+        json.dump(output, f, indent=2)
+
+
+def evaluate_all_checkpoints(
+    rl_checkpoint_dir: Path | str | None = None,
+    bc_rl_checkpoint_dir: Path | str | None = None,
+    n_games: int = 1000,
+    n_players: int = 5,
+    seed: int = 42,
+    verbose: bool = True,
+):
+    """Evaluate all checkpoints for both RL and BC+RL models.
+
+    Args:
+        rl_checkpoint_dir: Directory with pure RL checkpoints.
+        bc_rl_checkpoint_dir: Directory with BC+RL checkpoints.
+        n_games: Number of games per checkpoint evaluation.
+        n_players: Number of players per game.
+        seed: Random seed for reproducibility.
+        verbose: Whether to print progress.
+    """
+    bld_dir = Path(__file__).parent.parent / "bld"
+
+    if rl_checkpoint_dir is None:
+        rl_checkpoint_dir = bld_dir / "rl_checkpoints"
+    else:
+        rl_checkpoint_dir = Path(rl_checkpoint_dir)
+
+    if bc_rl_checkpoint_dir is None:
+        bc_rl_checkpoint_dir = bld_dir / "bc_rl_checkpoints"
+    else:
+        bc_rl_checkpoint_dir = Path(bc_rl_checkpoint_dir)
+
+    if rl_checkpoint_dir.exists():
+        if verbose:
+            print("=" * 60)
+            print("Evaluating Pure RL Checkpoints")
+            print("=" * 60)
+        rl_results = evaluate_checkpoints(
+            rl_checkpoint_dir, n_games, n_players, seed, verbose
+        )
+        if rl_results:
+            output_path = bld_dir / "rl_evaluation_results.json"
+            save_results_json(rl_results, output_path, "rl", n_players, n_games)
+            if verbose:
+                print(f"\nSaved results to {output_path}")
+    else:
+        if verbose:
+            print(f"RL checkpoint directory not found: {rl_checkpoint_dir}")
+
+    if bc_rl_checkpoint_dir.exists():
+        if verbose:
+            print("\n" + "=" * 60)
+            print("Evaluating BC+RL Checkpoints")
+            print("=" * 60)
+        bc_rl_results = evaluate_checkpoints(
+            bc_rl_checkpoint_dir, n_games, n_players, seed, verbose
+        )
+        if bc_rl_results:
+            output_path = bld_dir / "bc_rl_evaluation_results.json"
+            save_results_json(bc_rl_results, output_path, "bc_rl", n_players, n_games)
+            if verbose:
+                print(f"\nSaved results to {output_path}")
+    else:
+        if verbose:
+            print(f"BC+RL checkpoint directory not found: {bc_rl_checkpoint_dir}")
+
+
 def main():
     """Compare RL agent against baseline strategy."""
     model_path = Path(__file__).parent.parent / "bld" / "the_game_ppo.zip"
@@ -274,4 +449,9 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import sys
+
+    if len(sys.argv) > 1 and sys.argv[1] == "--checkpoints":
+        evaluate_all_checkpoints()
+    else:
+        main()
