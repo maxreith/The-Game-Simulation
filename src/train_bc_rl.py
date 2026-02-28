@@ -12,6 +12,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from sb3_contrib import MaskablePPO
+from stable_baselines3.common.callbacks import CheckpointCallback
 from tqdm import tqdm
 
 from game_env import TheGameEnv
@@ -426,7 +427,14 @@ def train_bc_then_rl(
         print("=" * 60)
         print(f"Training for {rl_timesteps:,} timesteps with {n_envs} parallel envs")
 
-    callbacks = [GameMetricsCallback(verbose=verbose)]
+    checkpoint_callback = CheckpointCallback(
+        save_freq=1_000_000 // n_envs,
+        save_path="bld/bc_rl_checkpoints",
+        name_prefix="bc_rl",
+        save_replay_buffer=False,
+        save_vecnormalize=False,
+    )
+    callbacks = [GameMetricsCallback(verbose=verbose), checkpoint_callback]
     ppo.learn(total_timesteps=rl_timesteps, callback=callbacks)
 
     ppo.save(output_path)
@@ -441,7 +449,7 @@ def main():
     train_bc_then_rl(
         n_demo_games=10000,
         bc_epochs=100,
-        rl_timesteps=1_000_000,
+        rl_timesteps=30_000_000,
         n_players=5,
         verbose=1,
     )
