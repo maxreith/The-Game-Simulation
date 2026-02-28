@@ -3,6 +3,7 @@
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import partial
 
+import numpy as np
 import pandas as pd
 
 from game_setup import run_game
@@ -86,6 +87,7 @@ def run_thinking_level_simulation(
 
 def main() -> None:
     """Run simulation and save results."""
+    np.random.seed(42)
     df = run_thinking_level_simulation()
 
     df.to_parquet("bld/gemini_thinking_results.parquet")

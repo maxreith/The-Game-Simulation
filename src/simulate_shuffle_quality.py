@@ -4,6 +4,7 @@ Simulation script to:
 2. Test win rates across different shuffle qualities
 """
 
+import numpy as np
 import pandas as pd
 from functools import partial
 from game_setup import run_simulation
@@ -97,6 +98,8 @@ def get_shuffle_description(n_shuffles: int) -> str:
 
 def main():
     """Run the complete simulation pipeline."""
+    np.random.seed(42)
+
     # Phase 1: Find optimal parameters from simulation results
     optimal_params = find_optimal_parameters()
 
