@@ -30,6 +30,7 @@ def plot_training_metrics(log_dir="bld/rl_logs", output_dir="bld"):
     game_metrics = [
         ("game/win_rate", "Win Rate"),
         ("game/avg_cards_played", "Avg Cards Played"),
+        ("rollout/ep_rew_mean", "Reward per Game"),
         ("game/avg_cards_per_turn", "Avg Cards per Turn"),
         ("game/avg_distance", "Avg Distance"),
     ]
