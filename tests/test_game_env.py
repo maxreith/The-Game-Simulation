@@ -616,6 +616,572 @@ class TestEmptyHandSkipping:
         assert np.any(env.action_masks())
 
 
+class TestEdgeCases:
+    """Edge cases matching game_setup.py behavior."""
+
+    # =========================================================================
+    # Minimum cards transition tests
+    # =========================================================================
+
+    def test_min_required_is_two_when_deck_has_cards(self):
+        """Minimum required is 2 when deck is not empty."""
+        env = TheGameEnv(n_players=3)
+        env.reset(seed=42)
+        assert len(env.remaining_deck) > 0
+        assert env._min_cards_required() == 2
+
+    def test_min_required_is_one_when_deck_empty(self):
+        """Minimum required is 1 when deck is empty."""
+        env = TheGameEnv(n_players=3)
+        env.reset(seed=42)
+        env.remaining_deck = np.array([], dtype=np.int32)
+        assert env._min_cards_required() == 1
+
+    def test_min_required_changes_after_deck_empties_during_turn(self):
+        """Min required updates correctly when deck empties mid-game."""
+        from utils import Stack
+
+        env = TheGameEnv(n_players=2, hand_size=7)
+        env.reset(seed=42)
+
+        # Set up: small deck, player can play cards
+        env.stacks[2] = Stack.from_array([1, 10])
+        env.hands[0] = np.array([20, 30, 40, 50, 60, 70, 80], dtype=np.int32)
+        env.remaining_deck = np.array([5, 6], dtype=np.int32)
+
+        assert env._min_cards_required() == 2
+
+        # Play 2 cards, then end turn to trigger draw
+        action1 = 0 * 4 + 2  # Play 20 on increasing stack
+        env.step(action1)
+        assert env._min_cards_required() == 2  # Still deck remaining
+
+        action2 = 0 * 4 + 2  # Play 30 on increasing stack
+        env.step(action2)
+
+        end_turn = env.hand_size * 4
+        env.step(end_turn)
+
+        # After drawing, deck should be empty (drew 2 to refill 7-card hand)
+        # But player 2 now playing, deck status matters
+        if len(env.remaining_deck) == 0:
+            assert env._min_cards_required() == 1
+
+    def test_play_one_card_valid_when_deck_empty(self):
+        """Can end turn after just 1 card when deck is empty."""
+        from utils import Stack
+
+        env = TheGameEnv(n_players=2)
+        env.reset(seed=42)
+
+        env.stacks[2] = Stack.from_array([1, 10])
+        env.hands[0] = np.array([20, 30, 40, 50, 60, 70], dtype=np.int32)
+        env.remaining_deck = np.array([], dtype=np.int32)
+
+        # Play 1 card
+        action = 0 * 4 + 2  # Play 20 on increasing stack
+        env.step(action)
+
+        # End turn should be valid now (min=1 when deck empty)
+        end_turn = env.hand_size * 4
+        mask = env.action_masks()
+        assert mask[end_turn], "End turn should be valid after 1 card when deck empty"
+
+    # =========================================================================
+    # Partial hand refill tests
+    # =========================================================================
+
+    def test_partial_draw_when_deck_nearly_empty(self):
+        """Player draws only remaining cards when deck has fewer than needed."""
+        from utils import Stack
+
+        env = TheGameEnv(n_players=2, hand_size=7)
+        env.reset(seed=42)
+
+        env.stacks[2] = Stack.from_array([1, 10])
+        env.hands[0] = np.array([20, 30, 40, 50, 60, 70, 80], dtype=np.int32)
+        env.hands[1] = np.array([21, 31, 41, 51, 61, 71, 81], dtype=np.int32)
+        env.remaining_deck = np.array([5, 6], dtype=np.int32)
+
+        # Play 2 cards
+        env.step(0 * 4 + 2)  # Play 20
+        env.step(0 * 4 + 2)  # Play 30
+
+        # End turn triggers draw - need 2 cards, deck has 2
+        end_turn = env.hand_size * 4
+        env.step(end_turn)
+
+        # Player 0 should have drawn 2 (5-card hand → 7 after drawing 2)
+        assert len(env.hands[0]) == 7
+
+    def test_partial_draw_fewer_cards_than_needed(self):
+        """Draw less than needed when deck doesn't have enough."""
+        from utils import Stack
+
+        env = TheGameEnv(n_players=2, hand_size=7)
+        env.reset(seed=42)
+
+        env.stacks[2] = Stack.from_array([1, 10])
+        env.hands[0] = np.array([20, 30, 40, 50], dtype=np.int32)  # Only 4 cards
+        env.hands[1] = np.array([21, 31, 41, 51, 61, 71, 81], dtype=np.int32)
+        env.remaining_deck = np.array([5], dtype=np.int32)  # Only 1 card
+
+        # Play 2 cards
+        env.step(0 * 4 + 2)  # Play 20
+        env.step(0 * 4 + 2)  # Play 30
+
+        # End turn - need 5 cards (7-2), deck has 1
+        end_turn = env.hand_size * 4
+        env.step(end_turn)
+
+        # Player 0 should have drawn 1 (2+1=3 cards)
+        assert len(env.hands[0]) == 3
+
+    def test_no_draw_when_deck_empty(self):
+        """No cards drawn when deck is empty."""
+        from utils import Stack
+
+        env = TheGameEnv(n_players=2, hand_size=7)
+        env.reset(seed=42)
+
+        env.stacks[2] = Stack.from_array([1, 10])
+        env.hands[0] = np.array([20, 30, 40, 50, 60, 70, 80], dtype=np.int32)
+        env.hands[1] = np.array([21, 31, 41, 51, 61, 71, 81], dtype=np.int32)
+        env.remaining_deck = np.array([], dtype=np.int32)
+
+        # Play 1 card (min=1 when deck empty)
+        env.step(0 * 4 + 2)
+
+        initial_hand_size = len(env.hands[0])
+        end_turn = env.hand_size * 4
+        env.step(end_turn)
+
+        # Hand size unchanged (no draw from empty deck)
+        assert len(env.hands[0]) == initial_hand_size
+
+    # =========================================================================
+    # Victory detection edge cases
+    # =========================================================================
+
+    def test_victory_on_last_card_played(self):
+        """Victory triggered immediately when last card is played."""
+        from utils import Stack
+
+        env = TheGameEnv(n_players=2)
+        env.reset(seed=42)
+
+        env.stacks[2] = Stack.from_array([1, 50])
+        env.hands[0] = np.array([51], dtype=np.int32)
+        env.hands[1] = np.array([], dtype=np.int32)
+        env.remaining_deck = np.array([], dtype=np.int32)
+
+        action = 0 * 4 + 2  # Play 51 on increasing stack
+        _, _, terminated, _, info = env.step(action)
+
+        assert terminated
+        assert info.get("victory", False)
+
+    def test_no_victory_when_others_have_cards(self):
+        """Not victory when current player empty but others have cards."""
+        from utils import Stack
+
+        env = TheGameEnv(n_players=2)
+        env.reset(seed=42)
+
+        env.stacks[2] = Stack.from_array([1, 50])
+        env.hands[0] = np.array([51], dtype=np.int32)
+        env.hands[1] = np.array([60, 70], dtype=np.int32)  # Other player has cards
+        env.remaining_deck = np.array([], dtype=np.int32)
+
+        action = 0 * 4 + 2  # Play 51
+        _, _, terminated, _, info = env.step(action)
+
+        # Should not be victory (player 1 still has cards)
+        assert not info.get("victory", False) or not terminated
+
+    def test_victory_requires_all_cards_played(self):
+        """Victory only when all 98 cards played (deck + all hands empty)."""
+        from utils import Stack
+
+        env = TheGameEnv(n_players=2)
+        env.reset(seed=42)
+
+        # Deck not empty
+        env.stacks[2] = Stack.from_array([1, 50])
+        env.hands[0] = np.array([51], dtype=np.int32)
+        env.hands[1] = np.array([], dtype=np.int32)
+        env.remaining_deck = np.array([60], dtype=np.int32)  # Still cards in deck
+
+        action = 0 * 4 + 2
+        _, _, terminated, _, info = env.step(action)
+
+        # Not victory because deck has cards
+        assert not info.get("victory", False)
+
+    # =========================================================================
+    # Loss condition tests
+    # =========================================================================
+
+    def test_loss_when_stuck_before_minimum(self):
+        """Game ends in loss when player can't play minimum cards."""
+        from utils import Stack
+
+        env = TheGameEnv(n_players=2)
+        env.reset(seed=42)
+
+        # Set up stuck position: all stacks blocked for all cards
+        env.stacks[0] = Stack.from_array([99, 10])  # Dec, need < 10 or 20
+        env.stacks[1] = Stack.from_array([99, 10])  # Dec, need < 10 or 20
+        env.stacks[2] = Stack.from_array([1, 90])  # Inc, need > 90 or 80
+        env.stacks[3] = Stack.from_array([1, 90])  # Inc, need > 90 or 80
+        env.hands[0] = np.array([50], dtype=np.int32)  # Can't play anywhere
+        env.remaining_deck = np.array([60, 70], dtype=np.int32)
+
+        # Player has 1 card, can't play it, min_required=2
+        # No valid actions available
+        mask = env.action_masks()
+        assert not np.any(mask), "Should have no valid actions"
+
+        # Game should detect this as loss
+        terminated, victory = env._check_game_over()
+        assert terminated
+        assert not victory
+
+    def test_loss_on_invalid_end_turn(self):
+        """Explicit end turn before minimum gives loss."""
+        env = TheGameEnv(n_players=2)
+        env.reset(seed=42)
+
+        # Play 1 card
+        mask = env.action_masks()
+        action = np.where(mask)[0][0]
+        env.step(action)
+
+        # Try to end turn (should be invalid, min=2)
+        end_turn = env.hand_size * 4
+        _, reward, terminated, _, info = env.step(end_turn)
+
+        assert terminated
+        assert reward < 0
+        assert info.get("invalid", False)
+
+    def test_loss_when_next_player_stuck(self):
+        """Game ends when next player cannot make any valid plays."""
+        from utils import Stack
+
+        env = TheGameEnv(n_players=2)
+        env.reset(seed=42)
+
+        # Player 0 can play on stack 2, player 1 will be stuck
+        # after player 0 plays (stack 2 will be at 30, player 1 has 50 which
+        # can still be played... so we need a different setup)
+
+        # Set up: Player 1 has card 50, which can only be played if
+        # stacks are set correctly AFTER player 0's turn
+        env.stacks[0] = Stack.from_array([99, 10])  # Dec, need < 10 or 20
+        env.stacks[1] = Stack.from_array([99, 10])  # Dec, need < 10 or 20
+        env.stacks[2] = Stack.from_array([1, 95])  # Inc, need > 95 or 85
+        env.stacks[3] = Stack.from_array([1, 95])  # Inc, need > 95 or 85
+
+        # Player 0 can play 96 and 97 on increasing stacks
+        env.hands[0] = np.array([96, 97, 98, 5, 6, 7], dtype=np.int32)
+        # Player 1 stuck with 50 (can't play on any stack after player 0's turn)
+        env.hands[1] = np.array([50], dtype=np.int32)
+
+        env.remaining_deck = np.array([60, 70], dtype=np.int32)
+
+        # Player 0 plays 96 on stack 2 and 97 on stack 3
+        env.step(0 * 4 + 2)  # Play 96 on inc stack 2
+        env.step(1 * 4 + 3)  # Play 97 on inc stack 3
+
+        end_turn = env.hand_size * 4
+        _, _, terminated, _, info = env.step(end_turn)
+
+        # Game should end because player 1 is stuck (50 can't be played anywhere)
+        assert terminated
+        assert not info.get("victory", False)
+        assert info.get("reason") == "next_player_stuck"
+
+    # =========================================================================
+    # Auto-end turn behavior tests
+    # =========================================================================
+
+    def test_auto_end_when_hand_empty_after_min(self):
+        """Turn auto-ends when hand empties after playing minimum cards."""
+        from utils import Stack
+
+        env = TheGameEnv(n_players=2)
+        env.reset(seed=42)
+
+        # Player 0 has only 2 cards
+        env.stacks[2] = Stack.from_array([1, 10])
+        env.hands[0] = np.array([20, 30], dtype=np.int32)
+        env.hands[1] = np.array([40, 50, 60, 70, 80, 85], dtype=np.int32)
+        env.remaining_deck = np.array([91, 92, 93, 94], dtype=np.int32)
+
+        # Play both cards
+        env.step(0 * 4 + 2)  # Play 20
+        assert env.current_player_idx == 0
+        env.step(0 * 4 + 2)  # Play 30
+
+        # Hand empty, min met, turn should auto-end
+        # After drawing, should be player 1's turn (or back to player 0 after draw)
+        assert env.current_player_idx == 1
+
+    def test_loss_when_hand_empty_before_min(self):
+        """Game ends in loss when hand empties before playing minimum."""
+        from utils import Stack
+
+        env = TheGameEnv(n_players=2)
+        env.reset(seed=42)
+
+        # Player has only 1 card
+        env.stacks[2] = Stack.from_array([1, 10])
+        env.hands[0] = np.array([20], dtype=np.int32)
+        env.hands[1] = np.array([40, 50, 60, 70, 80, 85], dtype=np.int32)
+        env.remaining_deck = np.array([91, 92], dtype=np.int32)  # Deck exists, min=2
+
+        # Play the only card
+        _, _, terminated, _, info = env.step(0 * 4 + 2)
+
+        # Should be loss (can't meet min_required=2)
+        assert terminated
+        assert not info.get("victory", False)
+
+    def test_auto_end_no_valid_moves_but_min_reached(self):
+        """Turn ends when no valid moves but minimum was reached."""
+        from utils import Stack
+
+        env = TheGameEnv(n_players=2)
+        env.reset(seed=42)
+
+        # Set up: after 2 plays, no more valid moves
+        env.stacks[0] = Stack.from_array([99, 90])  # Dec, need < 90 or 100
+        env.stacks[1] = Stack.from_array([99, 90])  # Dec, need < 90 or 100
+        env.stacks[2] = Stack.from_array([1, 10])  # Inc, need > 10 or 0
+        env.stacks[3] = Stack.from_array([1, 85])  # Inc, need > 85 or 75
+
+        # Player has cards where only 2 can be played
+        env.hands[0] = np.array([20, 30, 80, 81, 82, 83], dtype=np.int32)
+        env.hands[1] = np.array([40, 50, 60, 70, 75, 86], dtype=np.int32)
+        env.remaining_deck = np.array([91, 92], dtype=np.int32)
+
+        # Play 20 and 30 on increasing stack 2
+        env.step(0 * 4 + 2)  # Play 20
+        env.step(0 * 4 + 2)  # Play 30
+
+        # Now remaining cards (80-83) can't be played on any stack
+        # Turn should auto-end (or end_turn should be valid)
+        mask = env.action_masks()
+        end_turn = env.hand_size * 4
+
+        # Either no valid card plays exist, or end_turn is available
+        card_plays_valid = np.any(mask[:-1])
+        if not card_plays_valid:
+            # If no card plays, game should have auto-ended
+            assert env.current_player_idx == 1 or mask[end_turn]
+        else:
+            # If card plays exist, end_turn should be valid
+            assert mask[end_turn]
+
+    # =========================================================================
+    # Card index after removal tests
+    # =========================================================================
+
+    def test_action_mask_updates_after_play(self):
+        """Action mask reflects new hand state after card removal."""
+        from utils import Stack
+
+        env = TheGameEnv(n_players=2)
+        env.reset(seed=42)
+
+        env.stacks[2] = Stack.from_array([1, 10])
+        env.hands[0] = np.array([20, 30, 40, 50, 60, 70], dtype=np.int32)
+
+        # Get mask before play
+        mask_before = env.action_masks().copy()
+
+        # Play card at index 0 (card 20)
+        env.step(0 * 4 + 2)
+
+        # Get mask after play
+        mask_after = env.action_masks()
+
+        # Mask should be different (hand changed)
+        assert not np.array_equal(mask_before, mask_after)
+
+        # Card at "new index 0" is now 30, not 20
+        assert env.hands[0][0] == 30
+
+    def test_card_indices_shift_after_removal(self):
+        """Card indices shift correctly after card removal from hand."""
+        from utils import Stack
+
+        env = TheGameEnv(n_players=2)
+        env.reset(seed=42)
+
+        env.stacks[2] = Stack.from_array([1, 10])
+        original_hand = np.array([20, 30, 40, 50, 60, 70], dtype=np.int32)
+        env.hands[0] = original_hand.copy()
+
+        # Play card at index 2 (card 40)
+        env.step(2 * 4 + 2)
+
+        # Hand should now be [20, 30, 50, 60, 70]
+        expected = np.array([20, 30, 50, 60, 70], dtype=np.int32)
+        np.testing.assert_array_equal(env.hands[0], expected)
+
+        # Index 2 now points to 50, not 40
+        assert env.hands[0][2] == 50
+
+    def test_play_consecutive_cards_with_shifting_indices(self):
+        """Playing multiple cards maintains correct index tracking."""
+        from utils import Stack
+
+        env = TheGameEnv(n_players=2)
+        env.reset(seed=42)
+
+        env.stacks[2] = Stack.from_array([1, 10])
+        env.hands[0] = np.array([20, 30, 40, 50, 60, 70], dtype=np.int32)
+        env.remaining_deck = np.array([], dtype=np.int32)  # Empty deck, min=1
+
+        # Play card at index 0 (20), then "new index 0" (30), then "new index 0" (40)
+        env.step(0 * 4 + 2)  # Plays 20, hand becomes [30, 40, 50, 60, 70]
+        assert env.stacks[2].top == 20
+
+        env.step(0 * 4 + 2)  # Plays 30, hand becomes [40, 50, 60, 70]
+        assert env.stacks[2].top == 30
+
+        env.step(0 * 4 + 2)  # Plays 40, hand becomes [50, 60, 70]
+        assert env.stacks[2].top == 40
+
+    # =========================================================================
+    # Trick play stack state tests
+    # =========================================================================
+
+    def test_stack_top_after_trick_play_increasing(self):
+        """After trick play on increasing stack, top is the trick card."""
+        from utils import Stack
+
+        env = TheGameEnv(n_players=2)
+        env.reset(seed=42)
+
+        env.stacks[2] = Stack.from_array([1, 50])
+        env.hands[0] = np.array([40, 55, 60, 65, 70, 75], dtype=np.int32)
+
+        # Play 40 on increasing stack at 50 (trick: 40 + 10 = 50)
+        action = 0 * 4 + 2
+        env.step(action)
+
+        assert env.stacks[2].top == 40
+
+    def test_stack_top_after_trick_play_decreasing(self):
+        """After trick play on decreasing stack, top is the trick card."""
+        from utils import Stack
+
+        env = TheGameEnv(n_players=2)
+        env.reset(seed=42)
+
+        env.stacks[0] = Stack.from_array([99, 50])
+        env.hands[0] = np.array([60, 45, 40, 35, 30, 25], dtype=np.int32)
+
+        # Play 60 on decreasing stack at 50 (trick: 60 - 10 = 50)
+        action = 0 * 4 + 0
+        env.step(action)
+
+        assert env.stacks[0].top == 60
+
+    def test_subsequent_play_after_trick_increasing(self):
+        """After trick on increasing stack, next play must be > trick card."""
+        from utils import Stack
+
+        env = TheGameEnv(n_players=2)
+        env.reset(seed=42)
+
+        env.stacks[2] = Stack.from_array([1, 50])
+        env.hands[0] = np.array([40, 35, 45, 55, 60, 70], dtype=np.int32)
+        env.remaining_deck = np.array([], dtype=np.int32)
+
+        # Play 40 (trick)
+        env.step(0 * 4 + 2)
+        assert env.stacks[2].top == 40
+
+        # Now 35 should be invalid (35 < 40, not a trick)
+        # But 45, 55, 60, 70 should be valid (> 40)
+        # Card 35 is now at index 0 after removal of 40
+        # Action for index 0 on stack 2 should be invalid
+        assert not env._is_valid_play(35, 2)
+        assert env._is_valid_play(45, 2)
+
+    def test_subsequent_play_after_trick_decreasing(self):
+        """After trick on decreasing stack, next play must be < trick card."""
+        from utils import Stack
+
+        env = TheGameEnv(n_players=2)
+        env.reset(seed=42)
+
+        env.stacks[0] = Stack.from_array([99, 50])
+        env.hands[0] = np.array([60, 65, 55, 45, 40, 35], dtype=np.int32)
+        env.remaining_deck = np.array([], dtype=np.int32)
+
+        # Play 60 (trick)
+        env.step(0 * 4 + 0)
+        assert env.stacks[0].top == 60
+
+        # Now 65 should be invalid (65 > 60, not a trick)
+        # But 55, 45, 40, 35 should be valid (< 60)
+        assert not env._is_valid_play(65, 0)
+        assert env._is_valid_play(55, 0)
+
+    # =========================================================================
+    # Multi-player edge cases
+    # =========================================================================
+
+    def test_wrap_around_player_rotation(self):
+        """Player rotation wraps from last player to first."""
+        env = TheGameEnv(n_players=3)
+        env.reset(seed=42)
+
+        # Manually set to last player
+        env.current_player_idx = 2
+        env.cards_played_this_turn = 0
+
+        # Play 2 cards
+        for _ in range(2):
+            mask = env.action_masks()
+            valid = np.where(mask)[0]
+            if len(valid) > 0:
+                env.step(valid[0])
+
+        # End turn
+        end_turn = env.hand_size * 4
+        if env.action_masks()[end_turn]:
+            env.step(end_turn)
+            assert env.current_player_idx == 0  # Wrapped around
+
+    def test_skip_multiple_empty_hands_wrap_around(self):
+        """Correctly skips multiple empty hands including wrap-around."""
+        env = TheGameEnv(n_players=4)
+        env.reset(seed=42)
+
+        # Player 0 current, players 1,2,3 empty
+        env.hands[1] = np.array([], dtype=np.int32)
+        env.hands[2] = np.array([], dtype=np.int32)
+        env.hands[3] = np.array([], dtype=np.int32)
+
+        # Play 2 cards
+        for _ in range(2):
+            mask = env.action_masks()
+            action = np.where(mask)[0][0]
+            env.step(action)
+
+        # End turn - should skip back to player 0 (only one with cards)
+        end_turn = env.hand_size * 4
+        env.step(end_turn)
+
+        assert env.current_player_idx == 0
+
+
 class TestWinRateParity:
     """Tests ensuring TheGameEnv matches run_simulation win rates."""
 
