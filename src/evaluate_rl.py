@@ -210,7 +210,7 @@ def main():
         ("BC+RL @ 500M", bld_dir / "bc_rl_500M_final.zip"),
     ]
 
-    n_games = 1000
+    n_games = 10000
     n_players = 5
     seed = 42
 

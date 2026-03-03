@@ -239,19 +239,20 @@ achieves 5.3% win rate, nearly matching BC-only (5.5%).
 **Simplified rewards for RL phase:**
 `reward_per_card=0, win_reward=10.0, trick_play_reward=1.0, distance_penalty_scale=0.003, progress_reward_scale=0, phase_multiplier_scale=0`
 
-### Final Comparison (5 players, 1000 eval games, seed=42)
+### Final Comparison (5 players, 10000 eval games, seed=42)
 
 | Model                   | Win Rate | Avg Cards |
 | ----------------------- | -------- | --------- |
-| Pure RL (sparse) @ 100M | 3.5%     | 86.5      |
-| Pure RL (shaped) @ 100M | 8.9%     | 88.2      |
-| BC+RL @ 100M            | 16.3%    | 91.3      |
-| BC+RL @ 500M            | 16.6%    | 91.3      |
+| Pure RL (sparse) @ 100M | 4.0%     | 86.9      |
+| Pure RL (shaped) @ 100M | 8.1%     | 88.2      |
+| BC+RL @ 100M            | 16.2%    | 91.1      |
+| BC+RL @ 500M            | 17.5%    | 91.2      |
+| BC-only                 | 4.7%     | 87.2      |
 | Baseline (bonus_play)   | 4.5%     | -         |
 
 **Key findings:**
 
-- BC+RL significantly outperforms pure RL at the same step count (16.3% vs 8.9% at 100M)
-- BC+RL exceeds the expert baseline it was trained on (16.3% vs 4.5%)
-- Diminishing returns from 100M to 500M steps (16.3% → 16.6%)
-- Shaped rewards outperform sparse rewards for pure RL (8.9% vs 3.5%)
+- BC+RL significantly outperforms pure RL at the same step count (16.2% vs 8.1% at 100M)
+- BC+RL exceeds the expert baseline it was trained on (16.2% vs 4.5%)
+- Diminishing returns from 100M to 500M steps (16.2% → 17.5%)
+- Shaped rewards outperform sparse rewards for pure RL (8.1% vs 4.0%)

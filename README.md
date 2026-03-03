@@ -98,8 +98,7 @@ a set distance threshold of a stack top.
 What win rates does the expert achieve? The graph below shows results from 10,000
 simulations for each combination of player count/bonus play threshold combination. The
 expert is able to achieve winrates of 5%. The highest win rate is in a game with 5
-players and a bonus play threshold of 2. #TODO: Double check that the number is truly
-10000
+players and a bonus play threshold of 2.
 
 ![Strategy Evaluation](bld/strategy_evaluation.png)
 
@@ -113,10 +112,7 @@ actual gameplay, it slightly outperforms the expert it was trained on:
 | Agent  | Win Rate |
 | ------ | -------- |
 | Expert | 4.5%     |
-| BC     | 5.5%     |
-
-#TODO: Double check expert number, above it is 5%. Also double check bc number. These
-numbers should be Deterministically determined in evaluate_rl.py!
+| BC     | 4.7%     |
 
 #### RL Fine-Tuning
 
