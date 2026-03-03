@@ -46,7 +46,7 @@ simulations for each combination of player count and bonus play threshold.
 ![Strategy Evaluation](bld/strategy_evaluation.png)
 
 The highest winrate across all combinations is achieved in a 5 player game, with a
-threshold of 2 - 3. #TODO: Specify which one it is.
+threshold of 2.
 
 The way the reinforcement learning agent is trained here is to first 'clone' the expert
 system into a neural network, and then finetune the neural network using RL.
@@ -90,15 +90,9 @@ games per thinking level (because compute is not free, and high thinking is slow
 pixi install
 ```
 
-## Usage #TODO: SHould I get rid of pytask?
+## Usage
 
-Run all simulations:
-
-```bash
-pixi run pytask
-```
-
-Or run individual simulations:
+Run simulations:
 
 ```bash
 pixi run python src/simulate_strategies.py
@@ -112,20 +106,40 @@ Generate plots from existing results:
 pixi run python src/generate_plots.py
 ```
 
-## Project Structure #TO-DO: Update
+Train RL agents:
+
+```bash
+pixi run python src/train_rl.py
+pixi run python src/train_bc_rl.py
+```
+
+Evaluate trained models:
+
+```bash
+pixi run python src/evaluate_rl.py
+```
+
+## Project Structure
 
 ```
 src/
-├── game_setup.py          # Core game mechanics
-├── strategies.py          # Playing strategies (bonus play, Gemini)
-├── utils.py               # Stack implementation, Gemini API integration
-├── simulate_strategies.py # Strategy comparison simulation
-├── simulate_shuffle_quality.py  # Shuffle quality analysis
-├── simulate_gemini_thinking.py  # Gemini thinking level tests
-└── generate_plots.py      # Visualization generation
+├── game_setup.py              # Core game mechanics
+├── game_env.py                # Gymnasium environment for RL training
+├── strategies.py              # Playing strategies (bonus play, Gemini)
+├── utils.py                   # Stack implementation, Gemini API integration
+├── train_rl.py                # Pure RL training script
+├── train_bc_rl.py             # Behavioral cloning + RL training
+├── evaluate_rl.py             # Model evaluation and comparison
+├── generate_expert_data.py    # Generate expert demonstrations for BC
+├── generate_example_games.py  # Generate example game logs
+├── generate_plots.py          # Visualization generation
+├── plot_training_curves.py    # Plot training metrics from logs
+├── simulate_strategies.py     # Strategy comparison simulation
+├── simulate_shuffle_quality.py    # Shuffle quality analysis
+└── simulate_gemini_thinking.py    # Gemini thinking level tests
 
-tests/                     # Unit tests
-bld/                       # Generated outputs (plots, results)
+tests/                         # Unit tests
+bld/                           # Generated outputs (plots, results, models)
 ```
 
 ## Configuration

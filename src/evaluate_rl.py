@@ -95,88 +95,25 @@ def evaluate_rl_agent(model, n_games=1000, n_players=5, seed=None):
     }
 
 
-def replay_single_game(model, n_players=5, seed=None, verbose=True):
-    """Replay a single game with the RL agent and print every step."""
+def replay_single_game(model, n_players=5, seed=None):
+    """Replay a single game with the RL agent.
+
+    Args:
+        model: Trained MaskablePPO model.
+        n_players: Number of players.
+        seed: Random seed for reproducibility.
+
+    Returns:
+        True if game was won, False otherwise.
+    """
     env = TheGameEnv(n_players=n_players)
     obs, info = env.reset(seed=seed)
     terminated = False
-    step = 0
-    turn = 0
-
-    if verbose:
-        print(f"\n{'=' * 60}")
-        print(f"SAMPLE GAME  (seed={seed}, players={n_players})")
-        print(f"{'=' * 60}")
-
-    cards_this_turn = 0
 
     while not terminated:
         action_mask = env.action_masks()
         action, _ = model.predict(obs, deterministic=True, action_masks=action_mask)
-
-        # Capture state BEFORE the step
-        game = getattr(env, "game", None)
-        state = getattr(game, "state", None) if game else None
-        pile_tops_before = None
-        hand_before = None
-        current_player = "?"
-        if state is not None:
-            pile_tops_before = [p.top for p in state.piles]
-            current_player = getattr(state, "current_player", "?")
-            if hasattr(state, "hands"):
-                hand_before = sorted(state.hands[state.current_player])
-
         obs, reward, terminated, truncated, info = env.step(action)
-        step += 1
-
-        is_pass = action == 0
-        if verbose:
-            if is_pass:
-                print(f"  → END TURN (played {cards_this_turn} card(s))\n")
-                turn += 1
-                cards_this_turn = 0
-            else:
-                # Decode action to (card, stack)
-                decoded = None
-                if hasattr(env, "decode_action"):
-                    decoded = env.decode_action(action)
-                elif hasattr(env, "_decode_action"):
-                    decoded = env._decode_action(action)
-                elif hasattr(env, "action_to_card_stack"):
-                    decoded = env.action_to_card_stack.get(action)
-
-                stack_names = {
-                    0: "declining stack 1",
-                    1: "declining stack 2",
-                    2: "inclining stack 1",
-                    3: "inclining stack 2",
-                }
-                hand_str = ",".join(str(c) for c in hand_before) if hand_before else "?"
-
-                if decoded is not None:
-                    card, stack_idx = decoded
-                    stack_name = stack_names.get(stack_idx, f"stack {stack_idx}")
-                    top_before = (
-                        pile_tops_before[stack_idx] if pile_tops_before else "?"
-                    )
-                    print(
-                        f"  Player {current_player}: play card {card} on {stack_name} "
-                        f"with current top {top_before}. "
-                        f"Hand: [{hand_str}]  (reward={reward:.3f})"
-                    )
-                else:
-                    print(
-                        f"  Player {current_player}: action {action}. "
-                        f"Hand: [{hand_str}]  (reward={reward:.3f})"
-                    )
-                cards_this_turn += 1
-
-    if verbose:
-        victory = info.get("victory", False)
-        print(f"\n{'=' * 60}")
-        print(f"GAME OVER — {'VICTORY 🎉' if victory else 'DEFEAT 💀'}")
-        print(f"Total cards played: {env.total_cards_played}")
-        print(f"{'=' * 60}\n")
 
     return info.get("victory", False)
 
@@ -228,48 +165,55 @@ def main():
     n_players = 5
     seed = 42
 
-    print(
+    output_lines = []
+    output_lines.append(
         f"Evaluating models ({n_games} games, {n_players} players, seed={seed})\n"
-    )  # TODO: remove the print statements and save in a file instead
-    print("=" * 60)
+    )
+    output_lines.append("=" * 60)
 
     results = []
 
     for name, path in models:
         if not path.exists():
-            print(f"[SKIP] {name}: checkpoint not found at {path}")
+            output_lines.append(f"[SKIP] {name}: checkpoint not found at {path}")
             results.append((name, None, None))
             continue
 
-        print(f"Evaluating {name}...")
+        output_lines.append(f"Evaluating {name}...")
         model = MaskablePPO.load(path)
         eval_result = evaluate_rl_agent(model, n_games, n_players, seed)
         win_rate = eval_result["win_rate"]
         avg_cards = float(np.mean(eval_result["cards_per_game"]))
         results.append((name, win_rate, avg_cards))
-        print(f"  Win rate: {win_rate:.1%}, Avg cards: {avg_cards:.1f}")
+        output_lines.append(f"  Win rate: {win_rate:.1%}, Avg cards: {avg_cards:.1f}")
 
-    print("\nEvaluating baseline (bonus_play_strategy)...")
+    output_lines.append("\nEvaluating baseline (bonus_play_strategy)...")
     baseline_result = evaluate_baseline(
         n_games, n_players, bonus_threshold=2, seed=seed
     )
     baseline_win_rate = baseline_result["win_rate"]
     results.append(("Baseline (bonus_play)", baseline_win_rate, None))
-    print(f"  Win rate: {baseline_win_rate:.1%}")
+    output_lines.append(f"  Win rate: {baseline_win_rate:.1%}")
 
-    print("\n" + "=" * 60)
-    print("COMPARISON TABLE")
-    print("=" * 60)
-    print(f"{'Model':<30} {'Win Rate':>10} {'Avg Cards':>12}")
-    print("-" * 54)
+    output_lines.append("\n" + "=" * 60)
+    output_lines.append("COMPARISON TABLE")
+    output_lines.append("=" * 60)
+    output_lines.append(f"{'Model':<30} {'Win Rate':>10} {'Avg Cards':>12}")
+    output_lines.append("-" * 54)
     for name, win_rate, avg_cards in results:
         if win_rate is None:
-            print(f"{name:<30} {'N/A':>10} {'N/A':>12}")
+            output_lines.append(f"{name:<30} {'N/A':>10} {'N/A':>12}")
         elif avg_cards is None:
-            print(f"{name:<30} {win_rate:>9.1%} {'N/A':>12}")
+            output_lines.append(f"{name:<30} {win_rate:>9.1%} {'N/A':>12}")
         else:
-            print(f"{name:<30} {win_rate:>9.1%} {avg_cards:>11.1f}")
-    print("=" * 60)
+            output_lines.append(f"{name:<30} {win_rate:>9.1%} {avg_cards:>11.1f}")
+    output_lines.append("=" * 60)
+
+    output_text = "\n".join(output_lines)
+
+    output_file = bld_dir / "evaluation_results.txt"
+    bld_dir.mkdir(parents=True, exist_ok=True)
+    output_file.write_text(output_text)
 
 
 if __name__ == "__main__":
