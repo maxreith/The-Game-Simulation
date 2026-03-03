@@ -10,8 +10,7 @@ import numpy as np
 from tqdm import tqdm
 
 from game_env import TheGameEnv
-from strategies import identify_min_distance_card
-from utils import GameOverError
+from utils import GameOverError, identify_min_distance_card
 
 
 def get_expert_action(env: TheGameEnv, bonus_play_threshold: int = 4) -> int:

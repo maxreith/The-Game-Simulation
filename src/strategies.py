@@ -1,6 +1,11 @@
 import numpy as np
 
-from utils import GameOverError, play_to_stack, call_api_to_get_play_order
+from utils import (
+    GameOverError,
+    play_to_stack,
+    call_api_to_get_play_order,
+    identify_min_distance_card,
+)
 
 
 def bonus_play_strategy(
@@ -27,35 +32,6 @@ def bonus_play_strategy(
         hand, stacks = play_to_stack(hand, best_card, best_stack, stacks)
 
     return hand, stacks
-
-
-def identify_min_distance_card(hand, stacks):
-    """Identify the best card and stack to play on.
-
-    Args:
-        hand: Array of cards in the player's hand.
-        stacks: List of Stack objects representing game stacks.
-
-    Returns:
-        Tuple of (best_card, best_stack_index, minimum_distance).
-    """
-    tops = np.array([s.top for s in stacks], dtype=np.int32)
-    hand_col = hand.reshape(-1, 1)
-    diffs = tops - hand_col
-    diffs[:, 2:] = -diffs[:, 2:]
-
-    playable_diffs = diffs.copy()
-    playable_diffs[(playable_diffs <= 0) & (playable_diffs != -10)] = 1000
-    flat_idx = playable_diffs.argmin()
-    best_card_idx, best_stack = divmod(flat_idx, 4)
-    best_card = hand[best_card_idx]
-
-    min_diff = playable_diffs[best_card_idx, best_stack]
-
-    if min_diff == 1000:
-        raise GameOverError(f"No playable card found in hand {hand}")
-
-    return best_card, best_stack, min_diff
 
 
 def gemini_strategy(
