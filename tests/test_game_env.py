@@ -45,6 +45,14 @@ class TestTheGameEnv:
         assert env3.observation_space.shape == (17,)
         assert env5.observation_space.shape == (17,)
 
+    def test_max_players_defaults_to_n_players(self):
+        """max_players defaults to n_players when not specified."""
+        env3 = TheGameEnv(n_players=3)
+        assert env3.max_players == 3
+
+        env5 = TheGameEnv(n_players=5)
+        assert env5.max_players == 5
+
     def test_observation_padding_with_fewer_players(self):
         """Other hand sizes are padded with zeros when n_players < max_players."""
         env = TheGameEnv(n_players=2, max_players=5, hand_size=6)

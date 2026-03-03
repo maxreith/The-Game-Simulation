@@ -95,7 +95,7 @@ def evaluate_rl_agent(model, n_games=1000, n_players=5, seed=None):
     }
 
 
-def replay_single_game(model, n_players=3, seed=None, verbose=True):
+def replay_single_game(model, n_players=5, seed=None, verbose=True):
     """Replay a single game with the RL agent and print every step."""
     env = TheGameEnv(n_players=n_players)
     obs, info = env.reset(seed=seed)

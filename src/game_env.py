@@ -50,7 +50,7 @@ class TheGameEnv(gym.Env):
     ):
         super().__init__()
         self.n_players = n_players
-        self.max_players = max_players if max_players else 3
+        self.max_players = max_players if max_players is not None else n_players
         self.hand_size = hand_size if hand_size else (6 if n_players > 2 else 7)
         self.reward_per_card = reward_per_card
         self.win_reward = win_reward
