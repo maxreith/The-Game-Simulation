@@ -2,6 +2,7 @@
 
 Training RL agents on [The Game](https://boardgamegeek.com/boardgame/173090/the-game), a
 cooperative card game where players work together to play cards onto four shared stacks.
+I play this game with my mates a lot, so I had to do this.
 
 ## The Game Rules
 
@@ -14,75 +15,156 @@ cooperative card game where players work together to play cards onto four shared
 
 ## Training Agents
 
-I use gymnasium and sblines3 for training. Masked PPO.
+I train RL agents using masked proximal policy optimization (PPO).
 
-`Game_env.py` defines the environment. Agents' observation space includes own hand,
-stack tops, the number of cards remaining in the deck, how many cards the agents has
-left to play this turn and how many he has played already, total progress. Importantly,
-an agent does not get to see the other agents' hands, as that would be against the
-rules!
+PPO methods use actor-critic architecture, where the actor refers to the policy
+$\\pi(a|s) \\rightarrow [0,1]$, the probability of taking action $a$ in state $s$, and
+the critic parametrized by $\\theta$ estimates the approximate value function for the
+current policy: $Q(s, a; \\theta) \\approx Q^{\\pi}(s, a)$.
 
-Agents are trained from an individual perspective, but they are rewarded for collective
-outcomes.
+As is natural in this game, agents are rewarded for collective outcomes, but only get to
+observe their own private information. I use `gymnasium` to define the training
+environment. Agents' observation space includes the cards in their own hand, the cards
+on top of the four stacks, the number of cards remaining in the deck, the number of
+cards the agent has left to play in the current turn and the number of cards the agent
+has played already in the current turn and finally the number of cards each other player
+has left on their hand.
 
-I employ two ways to train agents. I train agents on games with n players.
+I use `stable_baselines3` for training. All agents are trained on games with 5 players.
+In the following, I will outline two training regimes.
 
-1. Simply training an agent
+### Pure Reinforcement Learning
 
-Explain reward structure.
+First, I train an agent with a **sparse reward structure** that only provides terminal
+feedback:
 
-Then show training results. My hypothesis is that training will not go well.
+| Parameter      | Value |
+| -------------- | ----- |
+| `win_reward`   | 100.0 |
+| `loss_penalty` | 0.5   |
 
-2. BC + RL
+These rewards seem natural: just tell the agent what the goal is and let it figure out
+how to get there. But after 100 million training steps with MaskablePPO, the agent
+performs rather poorely.
 
-For this, I first coded up an expert system called bonus_play_strategy, saved in
-strategies.py. It's a pretty simple system: it always plays the card with the minimum
-distance to the current stack tops until it reached the minimum number of cards to play,
-and only plays additional cards if the distance is below a bonus_play threshold.
+| Metric           | Value |
+| ---------------- | ----- |
+| Win rate         | 3.5%  |
+| Avg cards played | 86.5  |
 
-The expert is able to get decent winrates of up to 5% on the game. I ran 10,000
-simulations for each combination of player count and bonus play threshold.
+From experience, I can say that a 3.5% win rate is very low. The poor performance is
+probably because the reward signal is sparse. A game with 86 cards played, contains of
+~120 steps. Yet, the agent receives no signal during most of the gameplay, but is only
+rewarded or punished on the final step of the game.
+
+To improve the win rate, I want to guide learning more. Thus, I add shaped rewards to
+guide learning:
+
+| Parameter                | Value | Purpose                               |
+| ------------------------ | ----- | ------------------------------------- |
+| `reward_per_card`        | 0.02  | Encourage playing cards               |
+| `win_reward`             | 100.0 | Terminal win bonus                    |
+| `loss_penalty`           | 0.5   | Terminal loss penalty                 |
+| `trick_play_reward`      | 1.0   | Bonus for backwards trick plays (±10) |
+| `distance_penalty_scale` | 0.003 | Penalty for large gaps (distance > 5) |
+
+The distance penalty is quadratic: `penalty = 0.003 * (distance - 5)²` for plays where
+the card is more than 5 away from the stack top. This discourages wasteful plays.
+
+After 100 million training steps, the win rate has nearly tripled to 8.9%!
+
+| Metric           | Value |
+| ---------------- | ----- |
+| Win rate         | 8.9%  |
+| Avg cards played | 88.2  |
+
+Can I improve the win rate even further?
+
+### 2. Behaviorial Cloning + RL Finetuning
+
+With a single game spanning more than 100 training steps, I was concerned that most of
+the 100M training budget would be spent on the agent learning basic game intuitions —
+avoid large gaps, don't waste cards — leaving little capacity to learn more nuanced
+strategy. To bootstrap the agent with basic game knowledge, I built a simple expert for
+the agent to imitate before fine-tuning with RL.
+
+#### Behavioral Cloning
+
+I first built a simple expert called bonus_play_strategy. The strategy is
+straightforward: always play the card closest to any stack top until the minimum number
+of cards has been played, then continue playing additional cards only if they are within
+a set distance threshold of a stack top.
+
+What win rates does the expert achieve? The graph below shows results from 10,000
+simulations for each combination of player count/bonus play threshold combination. The
+expert is able to achieve winrates of 5%. The highest win rate is in a game with 5
+players and a bonus play threshold of 2. #TODO: Double check that the number is truly
+10000
 
 ![Strategy Evaluation](bld/strategy_evaluation.png)
 
-The highest winrate across all combinations is achieved in a 5 player game, with a
-threshold of 2 - 3. #TODO: Specify which one it is.
+I "cloned" the expert into a neural network via supervised learning. I collect 10,000
+games of expert play (~1.27M state-action pairs), then train a policy network to predict
+the expert's action given each game state.
 
-The way the reinforcement learning agent is trained here is to first 'clone' the expert
-system into a neural network, and then finetune the neural network using RL.
+The BC policy achieves **98% validation accuracy** on held-out data. When evaluated in
+actual gameplay, it slightly outperforms the expert it was trained on:
 
-Show training results of BC + RL agent.
+| Agent  | Win Rate |
+| ------ | -------- |
+| Expert | 4.5%     |
+| BC     | 5.5%     |
+
+#TODO: Double check expert number, above it is 5%. Also double check bc number. These
+numbers should be Deterministically determined in evaluate_rl.py!
+
+#### RL Fine-Tuning
+
+To fine tune the agent, I initialize MaskablePPO with the BC weights and fine-tune the
+agent with RL. I use more conservative hyperparameters for training:
+
+| Parameter       | Value | Rationale                       |
+| --------------- | ----- | ------------------------------- |
+| `learning_rate` | 5e-5  | 6x lower than pure RL           |
+| `clip_range`    | 0.1   | Tighter clipping for stability  |
+| `ent_coef`      | 0.01  | Less exploration (already good) |
+| `n_epochs`      | 5     | Fewer updates per batch         |
+
+RL fine-tuning uses sparse rewards (win/loss only) to let the agent discover
+improvements beyond the expert's strategy.
+
+| Training Steps | Win Rate | Avg Cards |
+| -------------- | -------- | --------- |
+| 0 (BC only)    | 5.5%     | 87.0      |
+| 100M           | 16.3%    | 91.3      |
+
+BC+RL reaches **16.3% win rate** after 100M steps, 3x the expert baseline and ~2x pure
+RL with shaped rewards!
 
 ## Further Analysis
 
 ### Does it matter how well the deck is shuffled?
 
-I used to disagree with my office mates over how well we'd have to shuffle the deck
-before setting up a new game. Using a custom cut-based shuffle algorithm, I simulate how
-shuffle quality affects win rates. I ran 1,000 games per shuffle quality, using the
-optimal settings (5 players, bonus play threshold of 2).
+My mates and I keep disagreeing over how much to shuffle the deck before setting up a
+new game. Well, how does shuffling affect win rates? Using a custom cut-based shuffle
+algorithm, different shuffle qualities at 1000 games each, using the optimal settings (5
+players, bonus play threshold of 2).
 
 ![Shuffle Quality Evaluation](bld/shuffle_evaluation.png)
 
-**Findings:**
-
-- Poorly shuffled decks have dramatically higher win rates
-- With proper shuffling (50+ iterations), win rates stabilize around 5%
+You have to properly shuffle your deck!
 
 ### Can AI play this game?
 
-The answer is no. I wanted to test Gemini 3 on this, but couldn't get it to win a single
-game. It keeps making invalid moves. I guess there is no training data for this game.
-But does Gemini at least perform better when you increase the thinking level? The plot
-below shows the average turn at which Gemini lost, for various thinking levels. I ran 3
-games per thinking level (because compute is not free, and high thinking is slow).
+I wanted to test Gemini 3 on this, but couldn't get it to win a single game. It keeps
+making invalid moves, probably because there is little training data on how to play this
+card game. But does Gemini at least perform better when you increase the thinking level?
+The plot below shows the average turn at which Gemini lost, for various thinking levels.
+I ran 3 games per thinking level, which already cost roughly $5 in API calls.
 
 ![Gemini Thinking Levels](bld/gemini_thinking.png)
 
-**Findings:**
-
-- Higher thinking levels survive more turns
-- Even with extended thinking, the AI struggles with the game
+Higher thinking leads to surviving more turns. My mates should give it a try ;)
 
 ## Installation
 
