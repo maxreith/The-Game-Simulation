@@ -24,15 +24,15 @@ class TestTheGameEnv:
         assert env.action_space.n == 29  # 7*4 + 1
 
     def test_observation_space_shape(self):
-        """Observation includes hand, stacks, gaps, deck, cards_played, min_required, other hands, progress, hand_stats."""
+        """Observation includes hand, stacks, deck, cards_played, min_required, other hands."""
         env = TheGameEnv(n_players=3, hand_size=6)
-        # 6 hand + 4 stack tops + 4 stack gaps + 1 deck + 1 cards_played + 1 min_required
-        # + 2 other_hand_sizes (3-1) + 1 total_progress + 3 hand_stats = 23
-        assert env.observation_space.shape == (23,)
+        # 6 hand + 4 stack tops + 1 deck + 1 cards_played + 1 min_required
+        # + 2 other_hand_sizes (max_players=3 default, so 3-1=2) = 15
+        assert env.observation_space.shape == (15,)
 
-        env5 = TheGameEnv(n_players=5, hand_size=6)
-        # + 4 other_hand_sizes (5-1) = 25
-        assert env5.observation_space.shape == (25,)
+        env5 = TheGameEnv(n_players=5, hand_size=6, max_players=5)
+        # + 4 other_hand_sizes (5-1) = 17
+        assert env5.observation_space.shape == (17,)
 
     def test_observation_space_with_max_players(self):
         """Observation size is fixed based on max_players for curriculum learning."""
@@ -40,18 +40,18 @@ class TestTheGameEnv:
         env3 = TheGameEnv(n_players=3, max_players=5, hand_size=6)
         env5 = TheGameEnv(n_players=5, max_players=5, hand_size=6)
 
-        # All should have same observation size: 6 + 4 + 4 + 3 + 4 + 1 + 3 = 25
-        assert env2.observation_space.shape == (25,)
-        assert env3.observation_space.shape == (25,)
-        assert env5.observation_space.shape == (25,)
+        # All should have same observation size: 6 + 4 + 3 + 4 = 17
+        assert env2.observation_space.shape == (17,)
+        assert env3.observation_space.shape == (17,)
+        assert env5.observation_space.shape == (17,)
 
     def test_observation_padding_with_fewer_players(self):
         """Other hand sizes are padded with zeros when n_players < max_players."""
         env = TheGameEnv(n_players=2, max_players=5, hand_size=6)
         obs, _ = env.reset(seed=42)
 
-        # Position: hand (6) + stack_tops (4) + gaps (4) + deck (1) + cards_played (1) + min_required (1) = 17
-        other_hands_start = 6 + 4 + 4 + 3
+        # Position: hand (6) + stack_tops (4) + deck (1) + cards_played (1) + min_required (1) = 13
+        other_hands_start = 6 + 4 + 3
         # First slot: player 2's hand (normalized to 1.0)
         assert obs[other_hands_start] == pytest.approx(1.0, abs=0.01)
         # Slots 2, 3, 4: padding (zeros)
@@ -114,8 +114,8 @@ class TestTheGameEnv:
         """Observation shows cards played this turn increasing."""
         env = TheGameEnv()
         obs, _ = env.reset(seed=42)
-        # Position: hand (6) + stack_tops (4) + gaps (4) + deck (1) = index 15
-        cards_played_idx = env.hand_size + 4 + 4 + 1
+        # Position: hand (6) + stack_tops (4) + deck (1) = index 11
+        cards_played_idx = env.hand_size + 4 + 1
         assert obs[cards_played_idx] == 0
 
         mask = env.action_masks()
@@ -128,8 +128,8 @@ class TestTheGameEnv:
         """Observation includes min cards required (2 if deck, 1 if empty)."""
         env = TheGameEnv()
         obs, _ = env.reset(seed=42)
-        # Position: hand (6) + stack_tops (4) + gaps (4) + deck (1) + cards_played (1) = 16
-        min_required_idx = env.hand_size + 4 + 4 + 2
+        # Position: hand (6) + stack_tops (4) + deck (1) + cards_played (1) = 12
+        min_required_idx = env.hand_size + 4 + 2
         # Normalized: (min_required - 1), so 2 -> 1.0
         assert obs[min_required_idx] == 1.0  # Deck exists at start
 
@@ -137,39 +137,11 @@ class TestTheGameEnv:
         """Observation includes other players' hand sizes."""
         env = TheGameEnv(n_players=3)
         obs, _ = env.reset(seed=42)
-        # Position: hand (6) + stack_tops (4) + gaps (4) + deck (1) + cards_played (1) + min_required (1) = 17
-        other_hands_start = env.hand_size + 4 + 4 + 3
+        # Position: hand (6) + stack_tops (4) + deck (1) + cards_played (1) + min_required (1) = 13
+        other_hands_start = env.hand_size + 4 + 3
         # All other players start with full hands (normalized to 1.0)
         assert obs[other_hands_start] == pytest.approx(1.0, abs=0.01)
         assert obs[other_hands_start + 1] == pytest.approx(1.0, abs=0.01)
-
-    def test_total_progress_in_observation(self):
-        """Observation includes total progress (cards played / 98)."""
-        env = TheGameEnv(n_players=3)
-        obs, _ = env.reset(seed=42)
-        # Position: other_hands_end + 1 total_progress
-        progress_idx = env.hand_size + 4 + 4 + 3 + (env.n_players - 1)
-        assert obs[progress_idx] == 0.0  # No cards played yet
-
-        # Play one card
-        mask = env.action_masks()
-        action = np.where(mask)[0][0]
-        obs, _, _, _, _ = env.step(action)
-        assert obs[progress_idx] == pytest.approx(1.0 / 98.0, abs=0.001)
-
-    def test_hand_stats_in_observation(self):
-        """Observation includes hand statistics (min, max, mean)."""
-        env = TheGameEnv(n_players=3)
-        obs, _ = env.reset(seed=42)
-        # Position: after total_progress
-        stats_start = env.hand_size + 4 + 4 + 3 + (env.n_players - 1) + 1
-        hand = env.hands[0]
-        expected_min = np.min(hand) / 100.0
-        expected_max = np.max(hand) / 100.0
-        expected_mean = np.mean(hand) / 100.0
-        assert obs[stats_start] == pytest.approx(expected_min, abs=0.01)
-        assert obs[stats_start + 1] == pytest.approx(expected_max, abs=0.01)
-        assert obs[stats_start + 2] == pytest.approx(expected_mean, abs=0.01)
 
 
 class TestGameMechanics:
@@ -1190,7 +1162,8 @@ class TestWinRateParity:
         from functools import partial
 
         from game_setup import run_simulation
-        from strategies import identify_min_distance_card, bonus_play_strategy
+        from strategies import bonus_play_strategy
+        from utils import identify_min_distance_card
 
         def play_game_bonus_strategy_env(env, seed, bonus_play_threshold=2):
             obs, info = env.reset(seed=seed)

@@ -50,7 +50,7 @@ class TheGameEnv(gym.Env):
     ):
         super().__init__()
         self.n_players = n_players
-        self.max_players = max_players if max_players else n_players
+        self.max_players = max_players if max_players else 3
         self.hand_size = hand_size if hand_size else (6 if n_players > 2 else 7)
         self.reward_per_card = reward_per_card
         self.win_reward = win_reward
@@ -66,12 +66,11 @@ class TheGameEnv(gym.Env):
         # Last action (hand_size * 4) = end turn
         self.action_space = spaces.Discrete(self.hand_size * 4 + 1)
 
-        # Observation: [hand (hand_size), stack_tops (4), stack_gaps (4),
+        # Observation: [hand (hand_size), stack_tops (4),
         #               deck_remaining (1), cards_played_this_turn (1), min_cards_required (1),
-        #               other_hand_sizes (max_players - 1), total_progress (1), hand_stats (3)]
+        #               other_hand_sizes (max_players - 1)]
         # All values normalized to [0, 1] range
-        # Use max_players for fixed observation size (curriculum learning compatibility)
-        obs_size = self.hand_size + 4 + 4 + 3 + (self.max_players - 1) + 1 + 3
+        obs_size = self.hand_size + 4 + 3 + (self.max_players - 1)
         self.observation_space = spaces.Box(
             low=0, high=1.0, shape=(obs_size,), dtype=np.float32
         )
@@ -126,19 +125,6 @@ class TheGameEnv(gym.Env):
         # Stack tops normalized
         stack_tops = np.array([s.top / 100.0 for s in self.stacks], dtype=np.float32)
 
-        # Stack gaps: how much room is left on each stack (normalized to [0, 1])
-        # Decreasing stacks (0,1): gap = top - 2 (range: 0 to 97)
-        # Increasing stacks (2,3): gap = 99 - top (range: 0 to 98)
-        gaps = np.array(
-            [
-                min((self.stacks[0].top - 2) / 97.0, 1.0),  # Dec 1
-                min((self.stacks[1].top - 2) / 97.0, 1.0),  # Dec 2
-                min((99 - self.stacks[2].top) / 98.0, 1.0),  # Inc 1
-                min((99 - self.stacks[3].top) / 98.0, 1.0),  # Inc 2
-            ],
-            dtype=np.float32,
-        )
-
         # Deck size normalized (max 98 - n_players * hand_size)
         max_deck = 98 - self.n_players * self.hand_size
         deck_remaining = np.array(
@@ -156,40 +142,19 @@ class TheGameEnv(gym.Env):
         )  # 0 or 1
 
         # Other players' hand sizes (normalized by hand_size)
-        # Padded to max_players - 1 for curriculum learning compatibility
         other_hand_sizes = np.zeros(self.max_players - 1, dtype=np.float32)
-        for i in range(1, self.n_players):
+        for i in range(1, min(self.n_players, self.max_players)):
             player_idx = (self.current_player_idx + i) % self.n_players
             other_hand_sizes[i - 1] = len(self.hands[player_idx]) / self.hand_size
-        # Remaining slots stay 0 (padding for fewer players)
-
-        # Total progress indicator (normalized by 98 total cards)
-        total_progress = np.array([self.total_cards_played / 98.0], dtype=np.float32)
-
-        # Hand statistics (min, max, mean of non-empty cards)
-        hand_filled = hand[hand > 0] if len(hand) > 0 else np.array([50])
-        if len(hand_filled) == 0:
-            hand_filled = np.array([50])
-        hand_stats = np.array(
-            [
-                np.min(hand_filled) / 100.0,
-                np.max(hand_filled) / 100.0,
-                np.mean(hand_filled) / 100.0,
-            ],
-            dtype=np.float32,
-        )
 
         return np.concatenate(
             [
                 hand_obs,
                 stack_tops,
-                gaps,
                 deck_remaining,
                 cards_played,
                 min_required,
                 other_hand_sizes,
-                total_progress,
-                hand_stats,
             ]
         )
 
