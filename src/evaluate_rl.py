@@ -228,48 +228,57 @@ def main():
     n_players = 5
     seed = 42
 
-    print(
+    output_lines = []
+    output_lines.append(
         f"Evaluating models ({n_games} games, {n_players} players, seed={seed})\n"
-    )  # TODO: remove the print statements and save in a file instead
-    print("=" * 60)
+    )
+    output_lines.append("=" * 60)
 
     results = []
 
     for name, path in models:
         if not path.exists():
-            print(f"[SKIP] {name}: checkpoint not found at {path}")
+            output_lines.append(f"[SKIP] {name}: checkpoint not found at {path}")
             results.append((name, None, None))
             continue
 
-        print(f"Evaluating {name}...")
+        output_lines.append(f"Evaluating {name}...")
         model = MaskablePPO.load(path)
         eval_result = evaluate_rl_agent(model, n_games, n_players, seed)
         win_rate = eval_result["win_rate"]
         avg_cards = float(np.mean(eval_result["cards_per_game"]))
         results.append((name, win_rate, avg_cards))
-        print(f"  Win rate: {win_rate:.1%}, Avg cards: {avg_cards:.1f}")
+        output_lines.append(f"  Win rate: {win_rate:.1%}, Avg cards: {avg_cards:.1f}")
 
-    print("\nEvaluating baseline (bonus_play_strategy)...")
+    output_lines.append("\nEvaluating baseline (bonus_play_strategy)...")
     baseline_result = evaluate_baseline(
         n_games, n_players, bonus_threshold=2, seed=seed
     )
     baseline_win_rate = baseline_result["win_rate"]
     results.append(("Baseline (bonus_play)", baseline_win_rate, None))
-    print(f"  Win rate: {baseline_win_rate:.1%}")
+    output_lines.append(f"  Win rate: {baseline_win_rate:.1%}")
 
-    print("\n" + "=" * 60)
-    print("COMPARISON TABLE")
-    print("=" * 60)
-    print(f"{'Model':<30} {'Win Rate':>10} {'Avg Cards':>12}")
-    print("-" * 54)
+    output_lines.append("\n" + "=" * 60)
+    output_lines.append("COMPARISON TABLE")
+    output_lines.append("=" * 60)
+    output_lines.append(f"{'Model':<30} {'Win Rate':>10} {'Avg Cards':>12}")
+    output_lines.append("-" * 54)
     for name, win_rate, avg_cards in results:
         if win_rate is None:
-            print(f"{name:<30} {'N/A':>10} {'N/A':>12}")
+            output_lines.append(f"{name:<30} {'N/A':>10} {'N/A':>12}")
         elif avg_cards is None:
-            print(f"{name:<30} {win_rate:>9.1%} {'N/A':>12}")
+            output_lines.append(f"{name:<30} {win_rate:>9.1%} {'N/A':>12}")
         else:
-            print(f"{name:<30} {win_rate:>9.1%} {avg_cards:>11.1f}")
-    print("=" * 60)
+            output_lines.append(f"{name:<30} {win_rate:>9.1%} {avg_cards:>11.1f}")
+    output_lines.append("=" * 60)
+
+    output_text = "\n".join(output_lines)
+    print(output_text)
+
+    output_file = bld_dir / "evaluation_results.txt"
+    bld_dir.mkdir(parents=True, exist_ok=True)
+    output_file.write_text(output_text)
+    print(f"\nResults saved to {output_file}")
 
 
 if __name__ == "__main__":
