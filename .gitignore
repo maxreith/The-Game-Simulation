@@ -13,7 +13,9 @@ __pycache__/
 
 # Build outputs
 bld/*
-!bld/*.png
+!bld/strategy_evaluation.png
+!bld/shuffle_evaluation.png
+!bld/gemini_thinking.png
 !bld/bc_rl_500M_final.zip
 !bld/shaped_100M_final.zip
 !bld/sparse_100M_final.zip
