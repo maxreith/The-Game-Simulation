@@ -316,24 +316,39 @@ Results: 1/3 wins (33.3%)
 **Step 119:** Play 39 on Inc2 (top=38)
 **Step 120:** Play 44 on Inc2 (top=39)
 **Step 121:** Play 7 on Dec1 (top=16)
+### Turn 38: Player 3
+- Hand: [3, 50, 54, 60, 62]
+- Stacks: Dec1=7, Dec2=65, Inc1=98, Inc2=44
+- Deck remaining: 0 cards
+
 **Step 122:** Play 62 on Dec2 (top=65)
 **Step 123:** Play 60 on Dec2 (top=62)
 **Step 124:** Play 50 on Inc2 (top=44)
 **Step 125:** Play 54 on Inc2 (top=50)
 **Step 126:** Play 3 on Dec1 (top=7)
+### Turn 39: Player 4
+- Hand: [4, 59, 86]
+- Stacks: Dec1=3, Dec2=60, Inc1=98, Inc2=54
+- Deck remaining: 0 cards
+
 **Step 127:** Play 59 on Dec2 (top=60)
 **Step 128:** End turn
-### Turn 38: Player 5
+### Turn 40: Player 5
 - Hand: [53, 82]
 - Stacks: Dec1=3, Dec2=59, Inc1=98, Inc2=54
 - Deck remaining: 0 cards
 
 **Step 129:** Play 53 on Dec2 (top=59)
 **Step 130:** Play 82 on Inc2 (top=54)
+### Turn 41: Player 1
+- Hand: [76, 93, 97]
+- Stacks: Dec1=3, Dec2=53, Inc1=98, Inc2=82
+- Deck remaining: 0 cards
+
 **Step 131:** Play 93 on Inc2 (top=82)
 **Step 132:** Play 97 on Inc2 (top=93)
 **Step 133:** End turn
-### Turn 39: Player 4
+### Turn 42: Player 4
 - Hand: [4, 86]
 - Stacks: Dec1=3, Dec2=53, Inc1=98, Inc2=97
 - Deck remaining: 0 cards
@@ -676,10 +691,15 @@ Final stacks: Dec1=3, Dec2=4, Inc1=98, Inc2=97
 **Step 125:** Play 44 on Inc2 (top=36)
 **Step 126:** Play 53 on Inc2 (top=44)
 **Step 127:** Play 90 on Inc1 (top=85)
+### Turn 41: Player 1
+- Hand: [18, 60, 99]
+- Stacks: Dec1=21, Dec2=61, Inc1=90, Inc2=53
+- Deck remaining: 0 cards
+
 **Step 128:** Play 60 on Dec2 (top=61)
 **Step 129:** Play 18 on Dec1 (top=21)
 **Step 130:** End turn
-### Turn 41: Player 2
+### Turn 42: Player 2
 - Hand: [50, 51, 52]
 - Stacks: Dec1=18, Dec2=60, Inc1=90, Inc2=53
 - Deck remaining: 0 cards
@@ -687,15 +707,30 @@ Final stacks: Dec1=3, Dec2=4, Inc1=98, Inc2=97
 **Step 131:** Play 52 on Dec2 (top=60)
 **Step 132:** Play 51 on Dec2 (top=52)
 **Step 133:** Play 50 on Dec2 (top=51)
+### Turn 43: Player 3
+- Hand: [98]
+- Stacks: Dec1=18, Dec2=50, Inc1=90, Inc2=53
+- Deck remaining: 0 cards
+
 **Step 134:** Play 98 on Inc1 (top=90)
+### Turn 44: Player 4
+- Hand: [6, 95, 96]
+- Stacks: Dec1=18, Dec2=50, Inc1=98, Inc2=53
+- Deck remaining: 0 cards
+
 **Step 135:** Play 6 on Dec1 (top=18)
 **Step 136:** End turn
-### Turn 42: Player 1
+### Turn 45: Player 1
 - Hand: [99]
 - Stacks: Dec1=6, Dec2=50, Inc1=98, Inc2=53
 - Deck remaining: 0 cards
 
 **Step 137:** Play 99 on Inc1 (top=98)
+### Turn 46: Player 4
+- Hand: [95, 96]
+- Stacks: Dec1=6, Dec2=50, Inc1=99, Inc2=53
+- Deck remaining: 0 cards
+
 **Step 138:** Play 95 on Inc2 (top=53)
 **Step 139:** Play 96 on Inc2 (top=95)
 
@@ -1041,11 +1076,16 @@ Final stacks: Dec1=3, Dec2=4, Inc1=98, Inc2=97
 
 **Step 127:** Play 43 on Dec2 (top=57)
 **Step 128:** Play 33 on Dec2 (top=43)
+### Turn 43: Player 3
+- Hand: [2, 10, 31, 99]
+- Stacks: Dec1=4, Dec2=33, Inc1=98, Inc2=59
+- Deck remaining: 0 cards
+
 **Step 129:** Play 31 on Dec2 (top=33)
 **Step 130:** Play 99 on Inc1 (top=98)
 **Step 131:** Play 2 on Dec1 (top=4)
 **Step 132:** End turn
-### Turn 43: Player 4
+### Turn 44: Player 4
 - Hand: [5, 27, 61]
 - Stacks: Dec1=2, Dec2=31, Inc1=99, Inc2=59
 - Deck remaining: 0 cards
@@ -1053,27 +1093,37 @@ Final stacks: Dec1=3, Dec2=4, Inc1=98, Inc2=97
 **Step 133:** Play 61 on Inc2 (top=59)
 **Step 134:** Play 27 on Dec2 (top=31)
 **Step 135:** End turn
-### Turn 44: Player 5
+### Turn 45: Player 5
 - Hand: [3, 97]
 - Stacks: Dec1=2, Dec2=27, Inc1=99, Inc2=61
 - Deck remaining: 0 cards
 
 **Step 136:** Play 97 on Inc2 (top=61)
 **Step 137:** End turn
-### Turn 45: Player 1
+### Turn 46: Player 1
 - Hand: [22, 78]
 - Stacks: Dec1=2, Dec2=27, Inc1=99, Inc2=97
 - Deck remaining: 0 cards
 
 **Step 138:** Play 22 on Dec2 (top=27)
 **Step 139:** End turn
-### Turn 46: Player 3
+### Turn 47: Player 3
 - Hand: [10]
 - Stacks: Dec1=2, Dec2=22, Inc1=99, Inc2=97
 - Deck remaining: 0 cards
 
 **Step 140:** Play 10 on Dec2 (top=22)
+### Turn 48: Player 4
+- Hand: [5]
+- Stacks: Dec1=2, Dec2=10, Inc1=99, Inc2=97
+- Deck remaining: 0 cards
+
 **Step 141:** Play 5 on Dec2 (top=10)
+### Turn 49: Player 5
+- Hand: [3]
+- Stacks: Dec1=2, Dec2=5, Inc1=99, Inc2=97
+- Deck remaining: 0 cards
+
 **Step 142:** Play 3 on Dec2 (top=5)
 
 **LOSS** - 97 cards played

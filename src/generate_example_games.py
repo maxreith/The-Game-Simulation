@@ -102,9 +102,10 @@ def run_example_game(model, seed: int, n_players: int = 5, max_players: int = 3)
         action_desc = action_to_description(action, hand, stacks)
         lines.append(f"**Step {step_num}:** {action_desc}")
 
+        player_before = inner_env.current_player_idx
         obs, reward, terminated, truncated, info = env.step(action)
 
-        if action == 24:
+        if action == 24 or inner_env.current_player_idx != player_before:
             cards_this_turn = 0
             current_player = inner_env.current_player_idx
         else:
