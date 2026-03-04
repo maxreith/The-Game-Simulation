@@ -206,8 +206,7 @@ def main():
     models = [
         ("Pure RL (sparse) @ 100M", bld_dir / "sparse_100M_final.zip"),
         ("Pure RL (shaped) @ 100M", bld_dir / "shaped_100M_final.zip"),
-        ("BC+RL @ 100M", bld_dir / "bc_rl_checkpoints" / "bc_rl_100000000_steps.zip"),
-        ("BC+RL @ 500M", bld_dir / "bc_rl_500M_final.zip"),
+        ("BC+RL @ 100M", bld_dir / "bc_rl_100M_final.zip"),
     ]
 
     n_games = 10000

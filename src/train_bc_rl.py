@@ -2,11 +2,11 @@
 
 Two-phase approach:
 1. Pre-train neural network to imitate bonus_play_strategy via supervised learning
-2. Initialize MaskablePPO with BC weights and fine-tune with RL to 500M steps
+2. Initialize MaskablePPO with BC weights and fine-tune with RL to 100M steps
 
 Outputs:
 - bld/bc_rl_checkpoints/bc_rl_*_steps.zip (checkpoints every 10M steps)
-- bld/bc_rl_500M_final.zip (final model)
+- bld/bc_rl_100M_final.zip (final model)
 """
 
 import os
@@ -329,7 +329,7 @@ def train_bc_then_rl(
         bc_model_path = Path(bc_model_path)
 
     if output_path is None:
-        output_path = bld_dir / "bc_rl_500M_final.zip"
+        output_path = bld_dir / "bc_rl_100M_final.zip"
     else:
         output_path = Path(output_path)
 
@@ -456,7 +456,7 @@ def main():
     train_bc_then_rl(
         n_demo_games=10000,
         bc_epochs=100,
-        rl_timesteps=500_000_000,
+        rl_timesteps=100_000_000,
         n_players=5,
         verbose=1,
     )

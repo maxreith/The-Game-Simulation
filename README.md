@@ -132,9 +132,9 @@ improvements beyond the expert's strategy.
 | Training Steps | Win Rate | Avg Cards |
 | -------------- | -------- | --------- |
 | 0 (BC only)    | 5.5%     | 87.0      |
-| 100M           | 16.3%    | 91.3      |
+| 100M           | 14.4%    | 91.4      |
 
-BC+RL reaches **16.3% win rate** after 100M steps, 3x the expert baseline and ~2x pure
+BC+RL reaches **14.4% win rate** after 100M steps, 3x the expert baseline and ~1.6x pure
 RL with shaped rewards!
 
 ## Further Analysis

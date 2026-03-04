@@ -245,14 +245,12 @@ achieves 5.3% win rate, nearly matching BC-only (5.5%).
 | ----------------------- | -------- | --------- |
 | Pure RL (sparse) @ 100M | 4.0%     | 86.9      |
 | Pure RL (shaped) @ 100M | 8.1%     | 88.2      |
-| BC+RL @ 100M            | 16.2%    | 91.1      |
-| BC+RL @ 500M            | 17.5%    | 91.2      |
+| BC+RL @ 100M            | 14.4%    | 91.4      |
 | BC-only                 | 4.7%     | 87.2      |
 | Baseline (bonus_play)   | 4.5%     | -         |
 
 **Key findings:**
 
-- BC+RL significantly outperforms pure RL at the same step count (16.2% vs 8.1% at 100M)
-- BC+RL exceeds the expert baseline it was trained on (16.2% vs 4.5%)
-- Diminishing returns from 100M to 500M steps (16.2% → 17.5%)
+- BC+RL significantly outperforms pure RL at the same step count (14.4% vs 8.1% at 100M)
+- BC+RL exceeds the expert baseline it was trained on (14.4% vs 4.5%)
 - Shaped rewards outperform sparse rewards for pure RL (8.1% vs 4.0%)

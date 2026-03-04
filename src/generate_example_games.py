@@ -198,8 +198,7 @@ def generate_example_games(
 FINAL_MODELS = [
     ("Pure RL (sparse) @ 100M", "bld/sparse_100M_final.zip", 3),
     ("Pure RL (shaped) @ 100M", "bld/shaped_100M_final.zip", 5),
-    ("BC+RL @ 100M", "bld/bc_rl_checkpoints/bc_rl_100000000_steps.zip", 5),
-    ("BC+RL @ 500M", "bld/bc_rl_500M_final.zip", 5),
+    ("BC+RL @ 100M", "bld/bc_rl_100M_final.zip", 5),
 ]
 
 
