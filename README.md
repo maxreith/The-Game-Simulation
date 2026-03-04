@@ -143,8 +143,9 @@ RL with shaped rewards!
 
 My mates and I keep disagreeing over how much to shuffle the deck before setting up a
 new game. Well, how does shuffling affect win rates? Using a custom cut-based shuffle
-algorithm, different shuffle qualities at 1000 games each, using the optimal settings (5
-players, bonus play threshold of 2).
+algorithm, different shuffle qualities at 1000 games each, using the simple expert
+system (`bonus_play_strategy`) with optimal settings (5 players, bonus play threshold of
+2).
 
 ![Shuffle Quality Evaluation](bld/shuffle_evaluation.png)
 
