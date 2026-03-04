@@ -1,4 +1,4 @@
-# The Game Simulation
+# The Game RL
 
 Training RL agents on [The Game](https://boardgamegeek.com/boardgame/173090/the-game), a
 cooperative card game where players work together to play cards onto four shared stacks.
